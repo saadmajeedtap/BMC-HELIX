@@ -84,20 +84,41 @@ PDF is attached to a GitHub Release.
 Set `"only_sections": "Getting-started"` for a fast sample build, `"max_docs": "30"`
 for a smoke test.
 
-### Locally
+### Locally (same pipeline, your machine, ~30-60 min for the whole space)
 
 ```bash
-./scripts/bootstrap.sh          # venv + deps (needs libpango/cairo for WeasyPrint)
-make pdf                        # or:
+git clone https://github.com/saadmajeedtap/BMC-HELIX.git && cd BMC-HELIX
+
+# Debian/Ubuntu: WeasyPrint needs pango/cairo + fonts
+sudo apt-get update && sudo apt-get install -y \
+  libpango-1.0-0 libpangocairo-1.0-0 libcairo2 fonts-dejavu-core fonts-liberation
+
+./scripts/bootstrap.sh                      # venv + python deps + self-test
+
+# quick look first (one menu section), then the whole space:
+make pdf SECTIONS=Getting-started WORK=/tmp/helix-test
+make pdf WORK=/tmp/helix
+
+# equivalently, without make:
 .venv/bin/python scripts/build_docs_pdf.py \
-    --workspace /tmp/helix --out BMC-Helix-ITSM-26.3-complete.pdf \
-    --report /tmp/helix/coverage-report.md
-open /tmp/helix/coverage.md
+  --space-path Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263 \
+  --product "BMC Helix ITSM" --version 26.3 \
+  --workspace /tmp/helix --out BMC-Helix-ITSM-26.3-complete.pdf \
+  --report /tmp/helix/coverage-report.md
 ```
 
-Requirements: Python 3.10+, network access to `docs.helixops.ai`, `pango/cairo`
-(for WeasyPrint) and optionally Playwright's Chromium. Use
-`--engine chromium --retry-engine none` if you want browser-exact CSS.
+Result: `BMC-Helix-ITSM-26.3-complete.pdf` next to `/tmp/helix/coverage.md`
+(read that file first: it states how many portal pages were found, how many are in
+the PDF, and that no documentation link still points at the website).
+`/tmp/helix/attachments/` holds every referenced attachment (zip/pdf/xlsx) with the
+`attachments.json` sha256 manifest; `/tmp/helix/page-map.json` maps each topic to its
+PDF page range.
+
+Requirements: Python 3.10+, network access to `docs.helixops.ai`, `pango/cairo`.
+Phases are cached in `--workspace`, so a re-run only rebuilds what changed, and an
+interrupted build resumes. Use `--engine chromium --retry-engine none` (after
+`./scripts/bootstrap.sh chromium`) if you want browser-exact CSS, `--no-attachments`
+to skip mirroring files, `--delay 0.2` to be gentler on the portal.
 
 Other spaces work the same way — e.g. `--space-path
 Service-Management/IT-Service-Management/BMC-Helix-ITSM-Service-Desk/servicedesk263`.
