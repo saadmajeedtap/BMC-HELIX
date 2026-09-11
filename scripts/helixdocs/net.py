@@ -73,6 +73,8 @@ class Http:
         return None
 
     def _store(self, url, body, status, ctype, body_name_hint=""):
+        if len(body) > 5 * 1024 * 1024:      # keep the on-disk cache for text/HTML
+            return
         k = self._key(url)
         binp = os.path.join(self.cache_dir, k + ".bin")
         with open(binp, "wb") as fh:

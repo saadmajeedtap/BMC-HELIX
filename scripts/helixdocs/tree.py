@@ -341,8 +341,16 @@ class Inventory:
         return inv
 
 
+def _section_matches(doc, title, wanted):
+    if not wanted:
+        return True
+    last = (doc or "").rsplit(".", 1)[-1].lower()
+    t = (title or "").lower().replace(" ", "-")
+    return any(w in last or w in t or last in w for w in wanted)
+
+
 def build_inventory(http, space_path, limit=500, max_rounds=60, time_budget=None,
-                    verbose=True, diag_path=""):
+                    verbose=True, diag_path="", only=None):
     """Expand the export document tree from the space root to exhaustion."""
     inv = Inventory(space_path, "export-tree")
     src = TreeSource(http, space_path, limit=limit, verbose=verbose)
@@ -355,8 +363,16 @@ def build_inventory(http, space_path, limit=500, max_rounds=60, time_budget=None
     if kids is None:
         raise RuntimeError("no document-tree endpoint returned children; see "
                            + (diag_path or "tree diagnostics"))
+    wanted = {str(w).strip().lower().replace(" ", "-") for w in (only or []) if str(w).strip()}
     for c in kids:
+        if wanted and not _section_matches(c["doc"], c["title"], wanted):
+            inv.denied.append(c["doc"])      # out of scope for this run, but recorded
+            continue
         inv.add(c["doc"], c["title"], parent=inv.root_doc, depth=1, closed=c["closed"])
+    if wanted:
+        if verbose:
+            print(f"[tree] scoped to {len(inv.nodes)} of {len(kids)} top-level sections",
+                  flush=True)
     inv.ensure_root()
     frontier = [d for d in inv.nodes if inv.nodes[d]["closed"] is not False]
     rounds = 0

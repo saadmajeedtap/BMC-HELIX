@@ -102,6 +102,8 @@ def prune_sections(inv, only):
             cur = stack.pop()
             keep.add(cur)
             stack.extend(inv.nodes[cur]["children"])
+    if inv.space_dot in inv.nodes:
+        keep.add(inv.space_dot)
     inv.nodes = {d: n for d, n in inv.nodes.items() if d in keep}
     for n in inv.nodes.values():
         if n["parent"] not in inv.nodes:
@@ -133,7 +135,8 @@ def run(opts):
             try:
                 inv = build_inventory(http, opts.space_path, limit=opts.tree_limit,
                                       time_budget=opts.time_budget or None,
-                                      diag_path=diag)
+                                      diag_path=diag,
+                                      only=opts.only_sections.split(",") or None)
             except Exception as exc:
                 log(f"document-tree API unavailable ({exc}); "
                     "falling back to link-closure enumeration")

@@ -117,7 +117,8 @@ class PageBuilder:
     """Turns portal HTML into one standalone HTML file plus metadata."""
 
     def __init__(self, http, space_path, out_dir, mirror_attachments=True,
-                 max_asset_bytes=40 * 1024 * 1024, known_docs=None, parent_map=None):
+                 max_asset_bytes=12 * 1024 * 1024, known_docs=None, parent_map=None,
+                 max_attach_bytes=60 * 1024 * 1024):
         self.http = http
         self.space_path = space_path
         self.space_dot = space_path.replace("/", ".")
@@ -129,6 +130,7 @@ class PageBuilder:
             os.makedirs(d, exist_ok=True)
         self.mirror_attachments = mirror_attachments
         self.max_asset_bytes = max_asset_bytes
+        self.max_attach_bytes = max_attach_bytes
         self.known_docs = known_docs or set()
         self.parent_map = parent_map or {}
         self._asset_index = {}
@@ -163,6 +165,8 @@ class PageBuilder:
 
     # ------------------------------------------------------------------ assets
     def _localize(self, url, doc=None, kind="asset"):
+        """cap: attachments can be huge release PDFs; images must not be clipped"""
+        cap = self.max_attach_bytes if kind == "attach" else self.max_asset_bytes
         """Download a portal asset and return (file_url|None, note)."""
         if not url or url.startswith(("data:", "javascript:", "mailto:", "tel:")):
             return None, "skip"
@@ -178,7 +182,7 @@ class PageBuilder:
             dest = os.path.join(self.assets_dir, key + ext)
         if cached and os.path.exists(cached):
             return "file://" + cached, "cached"
-        r = self.http.get(url, binary=True, max_bytes=self.max_asset_bytes)
+        r = self.http.get(url, binary=True, max_bytes=cap)
         if r is None:
             return None, "download-failed"
         status, body, ctype = r
