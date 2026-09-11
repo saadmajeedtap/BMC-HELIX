@@ -32,7 +32,7 @@ print('weasyprint',weasyprint.__version__,'| pypdf',pypdf.__version__,
       '| reportlab',reportlab.Version,'| python',sys.version.split()[0])"
 
 echo "## selftest (offline logic check)"
-python3 scripts/selftest.py --work /tmp/helix-selftest 2>&1 | tail -5
+python3 scripts/selftest.py --work /tmp/helix-selftest --with-render 2>&1 | tail -18
 
 echo "## portal diagnostics (raw document-tree fragment)"
 python3 - <<'PY' || true

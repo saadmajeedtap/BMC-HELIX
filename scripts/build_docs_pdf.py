@@ -69,6 +69,8 @@ def parse_args(argv=None):
     ap.add_argument("--tree-limit", type=int, default=500)
     ap.add_argument("--only-sections", default="", help="comma list of top-level sections")
     ap.add_argument("--max-docs", type=int, default=0, help="cap (for test builds)")
+    ap.add_argument("--max-pages", type=int, default=0,
+                    help="cap the number of merged documentation pages (0 = all)")
     ap.add_argument("--fresh", action="store_true", help="ignore HTTP/render caches")
     ap.add_argument("--no-attachments", action="store_true",
                     help="do not mirror non-image attachments")
@@ -239,7 +241,8 @@ def run(opts):
                  "engine": opts.engine, "http": http.summary(),
                  "assets_mb": round(_dir_mb(os.path.join(ws, "assets")), 1)}
         summary2, report_md = write_reports(ws, inv, metas, render_index, structure,
-                                            stats, samples, rows, out_pdf, extra)
+                                            stats, samples, rows, out_pdf, extra,
+                                            pdf_pages=len(rd.pages))
         summary.update(summary2)
         if not opts.skip_verify_samples:
             idx = [0, 1] + sorted(set([r["page"] for r in rows[::max(1, len(rows)//8)]]))[:8]

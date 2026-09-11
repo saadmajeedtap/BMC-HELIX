@@ -61,9 +61,12 @@ a { color:#0b5cad; text-decoration:none; }
 ul, ol { margin:0 0 7px; padding-left:20px; }
 li { margin:0 0 3px; }
 li > ul, li > ol { margin-top:3px; }
-table { border-collapse:collapse; width:100%; margin:8px 0 10px; font-size:8.4pt; }
+table { border-collapse:collapse; width:100%; margin:8px 0 10px; font-size:8.4pt;
+  max-width:100%; }
 th, td { border:1px solid #b9c2cc; padding:4px 6px; vertical-align:top;
-  text-align:left; break-inside:avoid; }
+  text-align:left; break-inside:avoid; word-break:break-word; overflow-wrap:anywhere; }
+.hyphenation, body { hyphens:none; text-align:left; }
+.macro-layout, .table-responsive, .bmc-table-responsive-wrapper { overflow:visible !important; }
 th { background:#eef3f8; font-weight:bold; }
 tr { break-inside:avoid; }
 thead { display:table-header-group; }
@@ -378,6 +381,16 @@ class PageBuilder:
         return meta
 
 
+def crumbs_for(inv, doc, limit=4):
+    """Ancestor titles, outermost first (used as a breadcrumb on each page)."""
+    out, node = [], inv.nodes.get(doc)
+    while node is not None and len(out) < limit:
+        out.append(node.get("title") or "")
+        pid = node.get("parent")
+        node = inv.nodes.get(pid) if pid else None
+    return list(reversed([t for t in out if t]))
+
+
 def fetch_pages(http, inv, builder, docs, verbose=True):
     """Download + clean each doc; returns {doc: meta} (meta=None on failure)."""
     urls = {d: inv.nodes[d]["url"] for d in docs}
@@ -396,7 +409,8 @@ def fetch_pages(http, inv, builder, docs, verbose=True):
                         "found_docs": [], "filtered_refs": [],
                         "is_redirect": False, "redirect_to": None, "notes": []}
             continue
-        metas[d] = builder.build(d, html, title_hint=inv.nodes[d]["title"])
+        metas[d] = builder.build(d, html, title_hint=inv.nodes[d]["title"],
+                                 crumbs=crumbs_for(inv, d))
     if verbose:
         ok = sum(1 for m in metas.values() if m and "error" not in m)
         print(f"[fetch] cleaned {ok}/{len(docs)} pages "

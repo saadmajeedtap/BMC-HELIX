@@ -24,7 +24,6 @@ def _norm(s):
 
 def audit_links(reader, space_path, space_dot, sample_limit=12):
     """Walk every link annotation; classify internal vs external."""
-    from pypdf.generic import ArrayObject  # noqa: F401  (import for side effects/typing)
     stats = Counter()
     samples = {"helix_unresolved": [], "external": [], "internal_goto": sample_limit}
     for i, page in enumerate(reader.pages):
@@ -99,7 +98,7 @@ def check_content(reader, structure, metas, docs=None, per_doc_chars_min=60):
 
 
 def write_reports(out_dir, inv, metas, render_index, structure, stats, samples,
-                  content_rows, pdf_path, extra=None):
+                  content_rows, pdf_path, extra=None, pdf_pages=None):
     os.makedirs(out_dir, exist_ok=True)
     total_inv = len(inv.nodes)
     rendered = sum(1 for v in render_index.values() if v.get("ok"))
@@ -113,7 +112,8 @@ def write_reports(out_dir, inv, metas, render_index, structure, stats, samples,
         "pdf": os.path.basename(pdf_path),
         "pdf_bytes": os.path.getsize(pdf_path) if os.path.exists(pdf_path) else 0,
         "inventory_pages": total_inv,
-        "pages_in_pdf": structure and len(structure) or 0,
+        "docs_in_pdf": len(structure or {}),
+        "pdf_pages": pdf_pages if pdf_pages is not None else "",
         "rendered_ok": rendered,
         "redirect_pages": redirects,
         "fetch_failures": len(failed),

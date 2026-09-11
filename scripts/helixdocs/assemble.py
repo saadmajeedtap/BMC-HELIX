@@ -229,8 +229,9 @@ def assemble(inv, metas, render_index, out_dir, product, version, opts, verbose=
             continue
         if r.get("ok") and r.get("pages", 0) > 0:
             content.append((d, r))
-    if opts.max_pages and len(content) > opts.max_pages:
-        content = content[:opts.max_pages]
+    max_pages = getattr(opts, 'max_pages', 0) or 0
+    if max_pages and len(content) > max_pages:
+        content = content[:max_pages]
     if not content:
         raise RuntimeError("nothing to merge - no page rendered successfully")
 
@@ -316,7 +317,7 @@ def assemble(inv, metas, render_index, out_dir, product, version, opts, verbose=
     n_pages = len(writer.pages)
 
     # ---- stamps (global page numbers + section) on content pages
-    if not opts.no_stamp:
+    if not getattr(opts, 'no_stamp', False):
         rows = []
         k = 0
         for d, r in content:

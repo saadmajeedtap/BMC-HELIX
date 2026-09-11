@@ -109,9 +109,12 @@ def make_pdf(path, doc, npages=2):
     c.save()
 
 
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--work", default="/tmp/helix-selftest")
+    ap.add_argument("--with-render", action="store_true",
+                    help="also exercise the real WeasyPrint engine (needs pango/cairo)")
     args = ap.parse_args()
     ws = args.work
     shutil.rmtree(ws, ignore_errors=True)
@@ -235,12 +238,100 @@ def main():
           "TOC prints the real page number of the first topic")
 
     print()
+    if args.with_render:
+        fails += render_selftest(ws, fails)
     if fails:
         print(f"SELFTEST FAILED ({len(fails)}):")
         for f in fails:
             print("  -", f)
         sys.exit(1)
     print("SELFTEST PASSED - pipeline logic verified offline")
+
+
+def render_selftest(ws, fails):
+    """Exercise the actual HTML -> PDF path with WeasyPrint (CI / Linux desktop)."""
+    try:
+        from weasyprint import HTML  # noqa: F401
+    except Exception as exc:
+        print(f"== render selftest: SKIPPED ({type(exc).__name__}) ==")
+        return fails
+    import shutil
+    print("== render selftest (WeasyPrint) ==")
+    rw = os.path.join(ws, "render")
+    shutil.rmtree(rw, ignore_errors=True)
+    os.makedirs(rw, exist_ok=True)
+    from PIL import Image
+    img = os.path.join(rw, "diagram.png")
+    Image.new("RGB", (320, 180), (30, 90, 160)).save(img)
+    inv = Inventory(SPACE)
+    for d, title in DOCS.items():
+        inv.add(d, title, parent=PARENTS[d], depth=(1 if PARENTS[d] is None else 2))
+    for d in DOCS:
+        inv.nodes[d]["children"] = [c for c in DOCS if PARENTS[c] == d]
+    http = Http(os.path.join(ws, "cache"), workers=1, delay=0, retries=1, verbose=False)
+    b = PageBuilder(http, SPACE, rw, mirror_attachments=False)
+    b._localize = lambda url, doc=None, kind="asset": ("file://" + img, "stub")
+    metas, html_ok = {}, True
+    for d in DOCS:
+        fx = fixture_html(d).replace("<table>", f'<img src="{img}"><table>')
+        metas[d] = b.build(d, fx, title_hint=DOCS[d])
+        h = open(metas[d]["html_file"], encoding="utf-8").read()
+        if f"src=\"file://{img}\"" not in h:
+            html_ok = False
+    fails_ = []
+
+    def ck(cond, label, detail=""):
+        print(("  ok   " if cond else "  FAIL ") + label + (f"   {detail}" if detail else ""))
+        if not cond:
+            fails_.append(label)
+
+    ck(html_ok, "images localised to files on disk")
+    from helixdocs.render import render_all
+    ri = render_all(metas, rw, engine="weasyprint", workers=2, fresh=True, verbose=False)
+    ck(all(v.get("ok") for v in ri.values()) and len(ri) >= 1, "every page rendered",
+       f"{sum(1 for v in ri.values() if v.get('ok'))}/{len(ri)}")
+    ck(all(v.get("pages", 0) >= 1 for v in ri.values()), "each page produced >=1 PDF page")
+    p0 = list(ri.values())[0]["pdf"]
+    from pypdf import PdfReader
+    r0 = PdfReader(p0)
+    t0 = r0.pages[0].extract_text() or ""
+    d0 = [d for d, v in ri.items()][0]
+    ck(f"{MARK[d0]}-tab2" in t0, "content hidden behind a tab is present in the PDF")
+    ck(f"{MARK[d0]}-collapse" in t0, "content hidden in a collapsed block is present")
+    ck(f"{MARK[d0]}-table" in t0 and f"{MARK[d0]}-navjunk" not in t0,
+       "table kept, site navigation stripped")
+    xo = 0
+    for pg in r0.pages:
+        try:
+            xo += len([k for k in (pg["/Resources"].get("/XObject") or {})])
+        except Exception:
+            pass
+    ck(xo > 0, "the page image is embedded in the PDF", f"xobjects={xo}")
+    opts = types.SimpleNamespace(space_path=SPACE, max_pages=0, no_stamp=False,
+                                  out=os.path.join(rw, "merged.pdf"))
+    res = assemble(inv, metas, ri, rw, "Test Product", "9.9", opts, verbose=False)
+    rm = PdfReader(os.path.join(rw, "merged.pdf"))
+    stats, samples = audit_links(rm, SPACE, SD)
+    ck(stats.get("helix_inspace_uri_LEFT", 0) == 0,
+       "no documentation link still opens the website",
+       f"left={stats.get('helix_inspace_uri_LEFT', 0)}")
+    ck(stats.get("internal_goto", 0) >= 1, "in-document jumps exist",
+       f"goto={stats.get('internal_goto', 0)}")
+    structure = json.load(open(os.path.join(rw, "structure.json")))["structure"]
+    rows = check_content(rm, structure, metas)
+    ck(all(r["status"] == "ok" for r in rows), "title + source marker found for every page",
+       json.dumps({r["doc"].rsplit(".", 1)[-1]: r["status"] for r in rows if r["status"] != "ok"}))
+    cnt = [0]
+    def walk(items):
+        for it in items or []:
+            if isinstance(it, list):
+                walk(it)
+            else:
+                cnt[0] += 1
+    walk(rm.outline)
+    ck(cnt[0] == len(ri), "PDF bookmarks mirror the navigation tree", f"{cnt[0]}/{len(ri)}")
+    print()
+    return fails + fails_
 
 
 if __name__ == "__main__":
