@@ -1,0 +1,16 @@
+{
+  "space_path": "Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263",
+  "product": "BMC Helix ITSM",
+  "version": "26.3",
+  "phases": "inventory,fetch,render,assemble,verify",
+  "only_sections": "Getting-started",
+  "max_docs": "0",
+  "engine": "weasyprint",
+  "workers": "3",
+  "http_workers": "8",
+  "delay": "0.08",
+  "no_attachments": true,
+  "no_stamp": false,
+  "commit_pdf": true,
+  "publish_release": false
+}
