@@ -1,10 +1,13 @@
 """Authoritative page inventory for a documentation space.
 
-BMC's own "Export > PDF" modal lazily renders the page tree through
-``XWiki.ExportDocumentTree``; that endpoint is the same source of truth the
-website uses to decide which pages belong to a space, so we walk it and get an
-exact inventory instead of guessing from a crawl. Every node is expanded once,
-which also proves no page is silently skipped.
+Primary source: the portal's own lazy document-tree endpoint - the same one its
+"Export > PDF" dialog uses to list the pages of a space. Because that endpoint is
+what the website itself trusts, walking it to exhaustion gives an exact inventory
+(and therefore an honest completeness claim) instead of a crawl-and-hope.
+
+The endpoint URL is *scraped from the live pages* and several shapes are tried, so
+the tool keeps working when BMC upgrades the portal. If no tree endpoint answers,
+we fall back to link-closure enumeration and say so loudly in the report.
 """
 from __future__ import annotations
 
@@ -17,86 +20,237 @@ from bs4 import BeautifulSoup
 
 from .config import (BASE, is_denied, norm_doc, pretty_url, safe_name, url_to_doc)
 
+ATTR_DOC_HINTS = ("data-document", "data-reference", "data-id", "data-node",
+                  "data-entityref", "data-xwiki-reference")
 
-def fragment_url(space_path: str, root_doc: str, limit: int = 500,
-                 sheet: str = "XWiki.ExportDocumentTree") -> str:
-    return (f"{BASE}/bin/get/{space_path}/WebHome?outputSyntax=plain"
-            f"&sheet={sheet}&filterHiddenDocuments=false&showTranslations=false"
-            f"&limit={limit}&root=document%3A{root_doc}")
+FALLBACK_TEMPLATES = [
+    "{base}/bin/get/{space}/WebHome/?outputSyntax=plain&sheet=XWiki.ExportDocumentTree"
+    "&filterHiddenDocuments=false&showTranslations=false&limit={limit}"
+    "&root=document%3Axwiki%3A{root}",
+    "{base}/bin/get/{space}/WebHome?outputSyntax=plain&sheet=XWiki.ExportDocumentTree"
+    "&filterHiddenDocuments=false&showTranslations=false&limit={limit}"
+    "&root=document%3Axwiki%3A{root}",
+    "{base}/bin/get/XWiki/BMC/CETS/Macros/Navigation/BmcDocumentTree"
+    "?limit={limit}&outputSyntax=plain&root=document%3Axwiki%3A{root}",
+    "{base}/bin/get/XWiki/BMC/CETS/Macros/Navigation/BmcDocumentTree"
+    "?limit={limit}&outputSyntax=plain&root=document%3A{root}",
+    "{base}/bin/get/{space}/WebHome/?outputSyntax=plain&sheet=XWiki.PageTree"
+    "&limit={limit}&root=document%3Axwiki%3A{root}",
+]
 
 
-def parse_fragment(html: str, space_path: str, space_dot_name: str):
-    """Return [{title, doc, closed}] for one tree fragment. Tolerates markup drift."""
-    out = []
-    if not html:
+def _looks_like_doc(val: str, space_dot: str) -> bool:
+    return bool(val) and space_dot in val and not val.startswith(("http", "/", "#"))
+
+
+class TreeSource:
+    def __init__(self, http, space_path, limit=500, verbose=True):
+        self.http = http
+        self.space_path = space_path
+        self.space_dot = space_path.replace("/", ".")
+        self.limit = limit
+        self.verbose = verbose
+        self.template = None
+        self.notes = []
+
+    # ------------------------------------------------------------- url plumbing
+    def url(self, tmpl, root_doc):
+        try:
+            return tmpl.format(base=BASE, space=self.space_path, limit=self.limit,
+                               root=root_doc)
+        except Exception:
+            return None
+
+    def scrape_templates(self, html):
+        out = []
+        html = (html or "").replace("&#38;", "&").replace("&amp;", "&")
+        for pat in (r"/bin/get/[^ \t\r\n\"'<>]*DocumentTree[^ \t\r\n\"'<>]*",
+                    r"/bin/get/[^ \t\r\n\"'<>]*PageTree[^ \t\r\n\"'<>]*"):
+            for m in re.finditer(pat, html):
+                u = m.group(0)
+                u = re.sub(r"[?&]root=[^&#]*", "", u)
+                u = re.sub(r"[?&]limit=[^&#]*", "", u)
+                u = re.sub(r"[?&]+$", "", u).replace("&&", "&").replace("?&", "?")
+                sep = "&" if "?" in u else "?"
+                u = f"{u}{sep}limit={{limit}}&root=document%3Axwiki%3A{{root}}"
+                if not u.startswith("http"):
+                    u = BASE + u
+                u = u.replace(BASE, "{base}")
+                u = u.replace(f"/bin/get/{self.space_path}/WebHome", "/bin/get/{space}/WebHome")
+                if u not in out and "{root}" in u:
+                    out.append(u)
         return out
-    soup = BeautifulSoup(html, "lxml")
-    for li in soup.select("li"):
-        a = li.find("a", href=True)
-        if not a:
-            continue
-        title = a.get_text(" ", strip=True) or ""
-        doc = a.get("data-document") or a.get("data-id") or a.get("data-node") or ""
-        if not doc:
-            doc = url_to_doc(a["href"], space_path, space_dot_name) or ""
-        if not doc:
-            continue
-        if doc.startswith("document:"):
-            doc = doc.split(":", 1)[1]
-        cls = " ".join(li.get("class") or []) + " " + " ".join(a.get("class") or [])
-        closed = ("closed" in cls) or ("jstree-closed" in cls)
-        expanded = li.find("ul") is not None
-        out.append({"title": title, "doc": norm_doc(f"{space_dot_name}.{doc}")
-                    if not doc.startswith(space_dot_name) else norm_doc(doc),
-                    "closed": closed and not expanded})
-    if out:
+
+    # ------------------------------------------------------------------ parsing
+    def parse_fragment(self, raw):
+        """-> [{title, doc, closed}] from a fragment (HTML or JSON)."""
+        res = []
+        if not raw:
+            return res
+        s = raw.strip()
+        if s[:1] in "[{":
+            try:
+                data = json.loads(s)
+            except Exception:
+                data = None
+            if data is not None:
+                def walk(obj):
+                    items = obj if isinstance(obj, list) else obj.get("children") or [] \
+                        if isinstance(obj, dict) else []
+                    for it in items:
+                        if not isinstance(it, dict):
+                            continue
+                        doc = ""
+                        for k in ("reference", "document", "id", "data", "entity", "path"):
+                            v = it.get(k)
+                            if isinstance(v, str) and _looks_like_doc(v, self.space_dot):
+                                doc = v
+                        title = it.get("label") or it.get("name") or it.get("title") or ""
+                        kids = it.get("children")
+                        res.append({"title": str(title), "doc": norm_doc(doc),
+                                    "closed": bool(kids is None and it.get("hasChildren"))})
+                        if isinstance(kids, list):
+                            walk(kids)
+                walk(data)
+                if res:
+                    return res
+        soup = BeautifulSoup(raw, "lxml")
+        for li in soup.select("li"):
+            a = li.find("a", href=True)
+            if a is None:
+                continue
+            doc = ""
+            for el in (a, li):
+                for k in ATTR_DOC_HINTS:
+                    v = el.get(k) or ""
+                    if _looks_like_doc(v, self.space_dot):
+                        doc = v.replace("document:", "").replace("xwiki:", "")
+                        break
+                if doc:
+                    break
+            if not doc:
+                m = re.search(r"/bin/(?:view|get|edit|inline)/" +
+                              re.escape(self.space_path) + r"/([A-Za-z0-9._/-]+)",
+                              a["href"])
+                if m:
+                    doc = self.space_dot + "." + m.group(1).strip("/").replace("/", ".")
+            if not doc:
+                continue
+            cls = " ".join((li.get("class") or [])) + " " + " ".join((a.get("class") or []))
+            closed = ("closed" in cls) or ("jstree-closed" in cls) or \
+                (str(li.get("data-haschildren", "")).lower() == "true" and not li.find("ul"))
+            if li.find("ul") is not None:
+                closed = False
+            title = re.sub(r"\s+", " ", a.get_text(" ", strip=True)) or ""
+            res.append({"title": title, "doc": norm_doc(doc), "closed": closed})
+        if not res:  # last resort: sweep hrefs into the space
+            for href in re.findall(r'href="([^"]+' + re.escape(self.space_path) + r'/[^"]+)"', raw):
+                d = url_to_doc(href, self.space_path, self.space_dot)
+                if d:
+                    res.append({"title": d.rsplit(".", 1)[-1], "doc": d, "closed": True})
+        seen, out = set(), []
+        for r in res:
+            if not r["doc"] or r["doc"] in seen or r["doc"] == self.space_dot:
+                continue
+            if r["doc"].startswith("document:"):
+                r["doc"] = norm_doc(r["doc"].split(":", 1)[-1])
+            seen.add(r["doc"])
+            out.append(r)
         return out
-    # Fallback: sweep raw hrefs (fragment not li-based, or attrs unknown).
-    pat = re.compile(r'href="([^"]*(?:/bin/(?:view/)?)?' + re.escape(space_path) + r'/([^"]+?)/?"')
-    seen = set()
-    for _href, tail in pat.findall(html):
-        doc = norm_doc(f"{space_dot_name}." + tail.strip("/").replace("/", "."))
-        if doc in seen or not doc:
-            continue
-        seen.add(doc)
-        out.append({"title": doc.rsplit(".", 1)[-1], "doc": doc, "closed": True})
-    return out
+
+    # -------------------------------------------------------------------- probe
+    def probe(self, page_html=""):
+        """Pick the first template that returns a parseable, non-empty fragment."""
+        templates = self.scrape_templates(page_html) + FALLBACK_TEMPLATES
+        self.notes = []
+        root = f"{self.space_dot}.WebHome"
+        samples = []
+        for tmpl in templates:
+            u = self.url(tmpl, root)
+            if not u:
+                continue
+            r = self.http.get(u)
+            if r is None:
+                self.notes.append(f"no-response {u[:120]}")
+                continue
+            status, body, ctype = r
+            kids = self.parse_fragment(body)
+            samples.append({"url": u, "status": status, "bytes": len(body or ""),
+                            "children": len(kids),
+                            "sample": re.sub(r"\s+", " ", (body or ""))[:900]})
+            if status == 200 and len(kids) >= 1:
+                self.template = tmpl
+                self.notes.append(f"USING {tmpl[:150]} -> {len(kids)} children")
+                self.samples = samples
+                if self.verbose:
+                    print(f"[tree] endpoint OK ({len(kids)} top-level children)", flush=True)
+                return kids
+            self.notes.append(f"http={status} children={len(kids)} {u[:110]}")
+        self.samples = samples
+        return None
+
+    def _root_candidates(self, doc):
+        return [f"{doc}.WebHome", doc] if doc != self.space_dot else [f"{doc}.WebHome"]
+
+    def children(self, doc):
+        for root in self._root_candidates(doc):
+            u = self.url(self.template, root)
+            r = self.http.get(u)
+            if r is not None and r[0] == 200:
+                return self.parse_fragment(r[1])
+        return None
+
+    def children_many(self, docs):
+        """Expand many nodes at once (rounds are I/O bound). {doc: [children]|None}."""
+        first = {d: self.url(self.template, f"{d}.WebHome" if d != self.space_dot
+                             else f"{d}.WebHome") for d in docs}
+        res = self.http.get_many(list(first.values()))
+        out, retry = {}, []
+        for d, u in first.items():
+            r = res.get(u)
+            if r is not None and r[0] == 200:
+                out[d] = self.parse_fragment(r[1])
+            else:
+                retry.append(d)
+        for d in retry:                      # leaf sections often have no WebHome doc
+            if d == self.space_dot:
+                out[d] = None
+                continue
+            u = self.url(self.template, d)
+            r = self.http.get(u)
+            out[d] = self.parse_fragment(r[1]) if (r is not None and r[0] == 200) else None
+        return out
 
 
 class Inventory:
     """Ordered, hierarchically-linked page inventory."""
 
-    def __init__(self, space_path: str):
+    def __init__(self, space_path: str, method: str = "export-tree"):
         self.space_path = space_path
         self.space_dot = space_path.replace("/", ".")
-        self.nodes = {}          # doc -> node dict
-        self.denied = []         # filtered-out authoring artifacts (auditable)
+        self.nodes = {}
+        self.denied = []
         self.expand_failures = []
+        self.method = method
+        self.root_doc = self.space_dot + ".WebHome"
 
-    # ------------------------------------------------------------------- adding
     def add(self, doc, title, parent=None, depth=1, closed=None):
-        doc = norm_doc(doc)
-        if not doc or doc == self.space_dot:
+        doc = norm_doc(doc) if doc != self.space_dot else doc
+        if not doc or doc == self.space_dot + ".WebHome":
             return None
         if is_denied(doc):
-            if doc not in [d for d in self.denied]:
+            if doc not in self.denied:
                 self.denied.append(doc)
             return None
         n = self.nodes.get(doc)
         if n is None:
-            n = {
-                "doc": doc,
-                "title": title or doc.rsplit(".", 1)[-1],
-                "parent": parent,
-                "depth": depth,
-                "children": [],
-                "closed": closed,
-                "url": pretty_url(doc, self.space_path, self.space_dot),
-                "slug": safe_name(doc),
-            }
+            n = {"doc": doc, "title": title or doc.rsplit(".", 1)[-1], "parent": parent,
+                 "depth": depth, "children": [], "closed": closed,
+                 "url": pretty_url(doc, self.space_path, self.space_dot),
+                 "slug": safe_name(doc)}
             self.nodes[doc] = n
         else:
-            if title and (n["title"] == n["doc"].rsplit(".", 1)[-1] or len(title) > len(n["title"])):
+            if title and len(title) > len(n["title"] or ""):
                 n["title"] = title
             if parent and not n["parent"]:
                 n["parent"] = parent
@@ -104,15 +258,11 @@ class Inventory:
                 n["closed"] = closed
         return n
 
-    def child_docs(self, doc):
-        return self.nodes[doc]["children"] if doc in self.nodes else []
-
-    # ---------------------------------------------------------------- traversal
     def roots(self):
-        return [d for d, n in self.nodes.items() if not n["parent"] or n["parent"] not in self.nodes]
+        return [d for d, n in self.nodes.items()
+                if not n.get("parent") or n["parent"] not in self.nodes]
 
     def walk(self):
-        """Depth-first in navigation order; returns every doc exactly once."""
         order, seen = [], set()
 
         def go(doc):
@@ -124,94 +274,133 @@ class Inventory:
                 go(c)
         for r in self.roots():
             go(r)
-        for d in self.nodes:  # any orphan not reachable from a root
+        for d in list(self.nodes):
             go(d)
         return order
 
-    # ------------------------------------------------------------------ numbers
     def stats(self):
         dd = {}
         for n in self.nodes.values():
             dd[n["depth"]] = dd.get(n["depth"], 0) + 1
-        return {"pages": len(self.nodes), "denied_filtered": len(self.denied),
+        return {"method": self.method, "pages": len(self.nodes),
+                "denied_filtered": len(self.denied),
                 "expand_failures": len(self.expand_failures),
-                "depth_histogram": dd, "roots": len(self.roots())}
+                "roots": len(self.roots()), "depth_histogram": dd}
 
     def save(self, path):
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        json.dump({"space_path": self.space_path, "stats": self.stats(),
-                   "denied": self.denied, "expand_failures": self.expand_failures,
+        json.dump({"space_path": self.space_path, "method": self.method,
+                   "stats": self.stats(), "denied": self.denied,
+                   "expand_failures": self.expand_failures,
                    "order": self.walk(), "nodes": self.nodes},
                   open(path, "w"), indent=1)
 
     @classmethod
     def load(cls, path):
         d = json.load(open(path))
-        inv = cls(d["space_path"])
-        inv.nodes = d["nodes"]
-        inv.denied = d.get("denied", [])
+        inv = cls(d["space_path"], d.get("method", "export-tree"))
+        inv.nodes, inv.denied = d["nodes"], d.get("denied", [])
         inv.expand_failures = d.get("expand_failures", [])
         return inv
 
 
-def build_inventory(http, space_path: str, max_rounds=40, limit=500, time_budget=None,
-                    verbose=True):
-    """Recursively expand the export document tree from the space root."""
-    inv = Inventory(space_path)
+def build_inventory(http, space_path, limit=500, max_rounds=60, time_budget=None,
+                    verbose=True, diag_path=""):
+    """Expand the export document tree from the space root to exhaustion."""
+    inv = Inventory(space_path, "export-tree")
+    src = TreeSource(http, space_path, limit=limit, verbose=verbose)
     t0 = time.time()
-    root = f"{inv.space_dot}.WebHome"
-    r = http.get(fragment_url(space_path, root, limit))
-    if r is None or r[0] != 200:
-        raise RuntimeError(f"document tree endpoint unreachable for {space_path}: {r}")
-    top = parse_fragment(r[1], space_path, inv.space_dot)
-    if not top:
-        raise RuntimeError("document tree fragment parsed 0 children; "
-                           "check parse_fragment() against the live markup")
-    for c in top:
-        inv.add(c["doc"], c["title"], parent=norm_doc(inv.space_dot), depth=1,
-                closed=c["closed"])
-    if verbose:
-        print(f"[tree] top level: {len(top)} sections", flush=True)
-
-    frontier = [norm_doc(i) for i in inv.nodes if inv.nodes[i]["closed"] is not False]
+    seed = http.get(f"{BASE}/bin/{space_path}/WebHome/")
+    kids = src.probe(seed[1] if seed else "")
+    if diag_path:
+        json.dump({"notes": src.notes, "samples": getattr(src, "samples", [])[:6]},
+                  open(diag_path, "w"), indent=1)
+    if kids is None:
+        raise RuntimeError("no document-tree endpoint returned children; see "
+                           + (diag_path or "tree diagnostics"))
+    for c in kids:
+        inv.add(c["doc"], c["title"], parent=inv.root_doc, depth=1, closed=c["closed"])
+    frontier = [d for d in inv.nodes if inv.nodes[d]["closed"] is not False]
     rounds = 0
     while frontier and rounds < max_rounds:
         rounds += 1
         if time_budget and time.time() - t0 > time_budget:
-            if verbose:
-                print(f"[tree] time budget reached, {len(frontier)} nodes left unexpanded",
-                      flush=True)
+            inv.notes = [f"time budget hit with {len(frontier)} nodes queued"]
             break
         todo = [d for d in dict.fromkeys(frontier)
-                if d in inv.nodes and not inv.nodes[d].get("_expanded")]
+                if d in inv.nodes and not inv.nodes[d].get("_exp")]
         if not todo:
             break
-        urls = {d: fragment_url(space_path, f"{d}.WebHome", limit) for d in todo}
-        res = http.get_many(list(urls.values()))
         nxt = []
+        got = src.children_many(todo)
         for d in todo:
-            inv.nodes[d]["_expanded"] = True
-            key = urls[d]
-            r = res.get(key)
-            if r is None:
+            inv.nodes[d]["_exp"] = True
+            ch = got.get(d)
+            if ch is None:
                 inv.expand_failures.append(d)
                 continue
-            kids = parse_fragment(r[1], space_path, inv.space_dot)
             inv.nodes[d]["children"] = []
-            for c in kids:
+            for c in ch:
+                if c["doc"] == d:
+                    continue
                 n = inv.add(c["doc"], c["title"], parent=d,
                             depth=inv.nodes[d]["depth"] + 1, closed=c["closed"])
                 if n is None:
                     continue
-                if c["doc"] == d:
-                    continue
-                inv.nodes[d]["children"].append(n["doc"])
-                if c["doc"] in inv.nodes and not inv.nodes[c["doc"]].get("_expanded"):
-                    nxt.append(c["doc"])
+                if n["doc"] not in inv.nodes[n["doc"]]["children"]:
+                    inv.nodes[d]["children"].append(n["doc"])
+                if c["closed"] or n.get("closed"):
+                    nxt.append(n["doc"])
         frontier = nxt
         if verbose:
             print(f"[tree] round {rounds}: expanded={len(todo)} queued={len(nxt)} "
                   f"total={len(inv.nodes)} t={time.time()-t0:.0f}s", flush=True)
-    for d in inv.nodes:
-        inv.nodes[d].pop("_expanded", None)
+    for d in list(inv.nodes):
+        inv.nodes[d].pop("_exp", None)
+    return inv
+
+
+def bfs_inventory(http, space_path, seeds=None, max_pages=20000, time_budget=None,
+                  verbose=True):
+    """Fallback: discover pages by following every in-space link to a fixpoint."""
+    inv = Inventory(space_path, "link-closure-fallback")
+    t0 = time.time()
+    start = seeds or [inv.root_doc]
+    for d in start:
+        inv.add(d, "Home", parent=None, depth=1, closed=True)
+    frontier = list(inv.nodes)
+    rounds = 0
+    while frontier and rounds < 30 and len(inv.nodes) < max_pages:
+        rounds += 1
+        if time_budget and time.time() - t0 > time_budget:
+            break
+        urls = {d: inv.nodes[d]["url"] for d in frontier if d in inv.nodes}
+        res = http.get_many(list(urls.values()))
+        nxt = []
+        for d, u in urls.items():
+            r = res.get(u)
+            inv.nodes[d]["_seen"] = True
+            if r is None or r[0] != 200:
+                inv.expand_failures.append(d)
+                continue
+            html = r[1]
+            inv.nodes[d]["children"] = []
+            m = re.search(r"/bin/(?:view/)?" + re.escape(space_path) + r"/([A-Za-z0-9._/-]+)/",
+                          html)
+            for href in set(re.findall(r'href="([^"]+' + re.escape(space_path) + r'[^"]*)"', html)):
+                cd = url_to_doc(href, space_path, inv.space_dot)
+                if not cd or cd == d:
+                    continue
+                n = inv.add(cd, cd.rsplit(".", 1)[-1].replace("-", " "), parent=d,
+                            depth=inv.nodes[d]["depth"] + 1, closed=True)
+                if n and n["doc"] not in inv.nodes[d]["children"]:
+                    inv.nodes[d]["children"].append(n["doc"])
+                    if not n.get("_seen"):
+                        nxt.append(n["doc"])
+        frontier = [x for x in dict.fromkeys(nxt) if not inv.nodes.get(x, {}).get("_seen")]
+        if verbose:
+            print(f"[tree:bfs] round {rounds}: +{len(nxt)} total={len(inv.nodes)} "
+                  f"t={time.time()-t0:.0f}s", flush=True)
+    for d in list(inv.nodes):
+        inv.nodes[d].pop("_seen", None)
     return inv

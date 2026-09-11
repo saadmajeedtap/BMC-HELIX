@@ -8,6 +8,7 @@ BRANCH="docs-build"
 OUT_PDF="$W/$(echo "${PRODUCT:-BMC-Helix-ITSM}" | tr ' ' '-')-${VERSION:-26.3}-complete.pdf"
 LOG="$W/build.log"
 REPORT="$W/report.md"
+BUILD_RC_FILE="$W/build-rc"
 
 phases() { printf '%s\n' "$*"; }
 
@@ -59,6 +60,7 @@ python3 scripts/build_docs_pdf.py \
   --report "$W/coverage-report.md" 2>&1 | tee "$LOG" | tail -80
 BUILD_RC=${PIPESTATUS[0]}
 echo "build exit code: $BUILD_RC"
+echo "$BUILD_RC" > "$BUILD_RC_FILE"
 } 2>&1 | tee "$REPORT"
 
 echo
@@ -121,4 +123,4 @@ if [ "${PUBLISH_RELEASE:-0}" = "1" ] && [ -f "$OUT_PDF" ]; then
 fi
 
 tail -c 20000 "$REPORT"
-exit 0
+exit "$(cat "$BUILD_RC_FILE" 2>/dev/null || echo 0)" 

@@ -38,7 +38,7 @@ from helixdocs.config import (DEFAULT_PRODUCT, DEFAULT_SPACE_PATH,        # noqa
 from helixdocs.net import Http                                            # noqa: E402
 from helixdocs.page import PageBuilder, fetch_pages                       # noqa: E402
 from helixdocs.render import render_all                                   # noqa: E402
-from helixdocs.tree import Inventory, build_inventory                     # noqa: E402
+from helixdocs.tree import Inventory, bfs_inventory, build_inventory       # noqa: E402
 from helixdocs.verify import (audit_links, check_content, make_samples,   # noqa: E402
                               write_reports)
 
@@ -123,8 +123,20 @@ def run(opts):
             log(f"inventory loaded from {opts.inventory}: {len(inv.nodes)} pages")
         else:
             log("enumerating the space with the portal's document-tree API ...")
-            inv = build_inventory(http, opts.space_path, limit=opts.tree_limit,
-                                  time_budget=opts.time_budget or None)
+            diag = os.path.join(ws, "tree-probe.json")
+            try:
+                inv = build_inventory(http, opts.space_path, limit=opts.tree_limit,
+                                      time_budget=opts.time_budget or None,
+                                      diag_path=diag)
+            except Exception as exc:
+                log(f"document-tree API unavailable ({exc}); "
+                    "falling back to link-closure enumeration")
+                inv = bfs_inventory(http, opts.space_path,
+                                    time_budget=opts.time_budget or None)
+                if os.path.exists(diag):
+                    d = json.load(open(diag))
+                    d["fallback"] = str(exc)[:300]
+                    json.dump(d, open(diag, "w"), indent=1)
             inv.save(inv_path)
         log(f"inventory: {json.dumps(inv.stats())}")
     else:
