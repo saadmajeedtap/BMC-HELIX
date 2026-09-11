@@ -49,7 +49,7 @@ print("```")
 PY
 
 echo "## integration test (mock portal, end-to-end)"
-python3 scripts/integration_test.py 2>&1 | tail -6 || { echo "INTEGRATION FAILED"; echo 3 > "$BUILD_RC_FILE"; }
+python3 scripts/integration_test.py --full 2>&1 | tail -10 || { echo "INTEGRATION FAILED"; echo 3 > "$BUILD_RC_FILE"; }
 
 echo "## live smoke test (real portal page -> cleaner, no writes)"
 python3 scripts/build_docs_pdf.py --smoke-page \

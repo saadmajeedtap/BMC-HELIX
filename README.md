@@ -14,7 +14,7 @@ with internet access and publishes the result.
 
 | Finding | Evidence |
 |---|---|
-| The portal is XWiki 16.10.11; page tree is served lazily by `XWiki.ExportDocumentTree` / BMC's `BmcDocumentTree` | scraped from live HTML (`probe/probe-report.md` in CI history) |
+| The portal is XWiki 16.10.11; page tree is served lazily by `XWiki.ExportDocumentTree` / BMC's `BmcDocumentTree` | scraped from live HTML ([docs/portal-findings.md](docs/portal-findings.md)) |
 | `?xpage=pdf` and the Export→PDF dialog export **one page only** (`includeAllChildren` is ignored) | probed: identical 26 022-byte PDF for all 6 parameter sets |
 | That server-side export is Apache FOP and **drops every image** (`imgs=0` on pages that are mostly screenshots) | `scripts/pdfstat.py` on the fetched PDFs |
 | The ready-made "complete documentation" PDFs live on *Videos and downloadable resources*, which **requires a BMC login** (`You must log in or register to view this page`), and the attachments endpoint 404s anonymously | `…/itsm263/PDFs-and-videos/` → 200 but gated; `/bin/attachments/…` → 404 |
