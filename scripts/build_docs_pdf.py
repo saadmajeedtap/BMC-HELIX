@@ -197,6 +197,8 @@ def run(opts):
         metas = {d: m for d, m in metas.items() if m is not None}
         json.dump(metas, open(metas_path, "w"))
         inv.save(inv_path)   # persist the inventory *including* closure additions
+        n_att = write_attachment_manifest(metas, ws)
+        log(f"attachments mirrored: {n_att}")
         ok = sum(1 for m in metas.values() if "error" not in m)
         red = sum(1 for m in metas.values() if m.get("is_redirect"))
         log(f"fetched: ok={ok} redirect={red} http-fail={len(metas)-ok-red} "
@@ -270,6 +272,34 @@ def run(opts):
     json.dump(summary, open(os.path.join(ws, "summary.json"), "w"), indent=1)
     log(f"DONE in {time.time()-t_start:.0f}s")
     return summary
+
+
+def write_attachment_manifest(metas, ws):
+    """List every attachment referenced by the documentation, with its hash, so the
+    mirrored bundle can be checked file by file (and gaps seen, not hidden)."""
+    import hashlib
+    items, kept = [], 0
+    for d, m in sorted(metas.items()):
+        for att in (m.get("attachments") or []):
+            rec = {"doc": d, "name": att["name"], "url": att["url"],
+                   "mirrored": bool(att.get("mirrored")), "local": att.get("local", "")}
+            lp = att.get("local")
+            if lp and os.path.exists(lp):
+                rec["bytes"] = os.path.getsize(lp)
+                h = hashlib.sha256()
+                with open(lp, "rb") as fh:
+                    for chunk in iter(lambda: fh.read(1 << 20), b""):
+                        h.update(chunk)
+                rec["sha256"] = h.hexdigest()[:32]
+                kept += 1
+            else:
+                rec["bytes"] = 0
+                rec["missing_reason"] = "not mirrored" if not att.get("mirrored") else "file gone"
+            items.append(rec)
+    json.dump({"total": len(items), "mirrored": kept,
+               "bytes": sum(i["bytes"] for i in items), "items": items},
+              open(os.path.join(ws, "attachments.json"), "w"), indent=1)
+    return f"{kept}/{len(items)} files"
 
 
 def _dir_mb(path):

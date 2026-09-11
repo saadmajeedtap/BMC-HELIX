@@ -9,7 +9,7 @@
   "workers": "3",
   "http_workers": "8",
   "delay": "0.08",
-  "no_attachments": true,
+  "no_attachments": false,
   "no_stamp": false,
   "commit_pdf": true,
   "publish_release": false

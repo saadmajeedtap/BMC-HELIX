@@ -84,6 +84,14 @@ echo "## results" >> "$REPORT"
   echo '```'
 } >> "$REPORT"
 
+# bundle mirrored attachments (separate from the PDF: they are files, not pages)
+if [ -d "$W/attachments" ] && [ -n"$(ls -A "$W/attachments" 2>/dev/null)" ]; then
+  att_mb=$(du -sm "$W/attachments" | cut -f1)
+  ( cd "$W" && zip -qr attachments.zip attachments )
+  echo "attachments: $att_mb MB zipped" | tee -a "$W/attachments-note.txt"
+  if [ "${att_mb:-0}" -lt 40 ]; then cp "$W/attachments.zip" "$W/attachments-small.zip"; fi
+fi
+
 # small artifacts for human/agent review
 python3 - <<PY || true
 import json,os
@@ -101,13 +109,14 @@ git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 git checkout -B "$BRANCH" >/dev/null 2>&1 || git checkout "$BRANCH"
 mkdir -p build
 cp "$REPORT" build/report.md
-for f in summary.json coverage.md coverage.json inventory.json structure.json page-map.json render-index.json excerpt.pdf samples.tgz; do
+for f in summary.json coverage.md coverage.json inventory.json structure.json page-map.json render-index.json attachments.json excerpt.pdf samples.tgz; do
   [ -e "$W/$f" ] && cp "$W/$f" "build/$f"
 done
 if [ -f "$OUT_PDF" ]; then
   sz=$(stat -c%s "$OUT_PDF")
   echo "pdf bytes: $sz" >> build/report.md
   if [ "$sz" -lt 44000000 ] && [ "${COMMIT_PDF:-1}" = "1" ]; then
+    [ -f "$W/attachments-small.zip" ] && cp "$W/attachments-small.zip" build/
     cp "$OUT_PDF" "build/$(basename "$OUT_PDF")"
     echo "- full PDF committed to branch $BRANCH" >> build/report.md
   else
@@ -120,12 +129,17 @@ git push -f origin "$BRANCH" || true
 
 if [ "${PUBLISH_RELEASE:-0}" = "1" ] && [ -f "$OUT_PDF" ]; then
   tag="docs-$(echo "$PRODUCT" | tr 'A-Z ' 'a-z-')-$VERSION-$(date -u +%Y%m%d-%H%M)"
+  ASSETS=("$OUT_PDF")
+  [ -f "$W/attachments.zip" ] && ASSETS+=("$W/attachments.zip")
+  [ -f "$W/coverage.json" ] && ASSETS+=("$W/coverage.json")
+  [ -f "$W/page-map.json" ] && ASSETS+=("$W/page-map.json")
   gh release create "$tag" --title "$PRODUCT $VERSION - complete documentation (offline PDF)" \
-    --notes-file "$W/coverage-report.md" "$OUT_PDF" || {
+    --notes-file "$W/coverage-report.md" "${ASSETS[@]}" || {
       echo "release upload failed; retrying with split parts"
       split -C 95m "$OUT_PDF" "$W/part-"
       gh release create "$tag" --title "$PRODUCT $VERSION - complete documentation (parts)" \
-        --notes-file "$W/coverage-report.md" "$W"/part-* "$W/coverage.json" || true
+        --notes-file "$W/coverage-report.md" "$W"/part-* "$W/coverage.json" \
+        "$W/page-map.json" $([ -f "$W/attachments.zip" ] && echo "$W/attachments.zip") || true
     }
 fi
 
