@@ -122,6 +122,20 @@ for ph in "${PASSES[@]}"; do
   echo "$rc" > "$W/last-phase-rc"
   note "phase $ph rc=$rc ended $(date -u +%T)  |  $(tail -3 "$W/build.log" | tr '\n' ' ' | tail -c 400)"
   push_state "phase $ph rc=$rc"
+  if [ "$rc" != "0" ]; then
+    # On a multi-thousand page space the memory-heavy part is the footer stamp
+    # pass over the merged file. Retry without it rather than losing the build:
+    # the PDF is still complete and linked, only the page numbers are absent.
+    case "$ph:$rc" in
+      assemble:*)
+        note "retrying assemble without the stamp pass (rc=$rc, likely out of memory)"
+        timeout -k 30 "${PHASE_TIMEOUT:-3000}" python3 scripts/build_docs_pdf.py \
+            --phases assemble "${ARGS[@]}" --no-stamp >> "$W/build.log" 2>&1
+        rc=$?
+        note "assemble retry rc=$rc"
+        push_state "assemble retry rc=$rc";;
+    esac
+  fi
   [ "$rc" != "0" ] && echo "$rc" > "$BUILD_RC_FILE"
 done
 

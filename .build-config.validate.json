@@ -1,0 +1,22 @@
+{
+  "space_path": "Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263",
+  "product": "BMC Helix ITSM",
+  "version": "26.3",
+  "phases": "inventory,fetch,render,assemble,verify",
+  "only_sections": "Getting-started,Release-notes-and-notices",
+  "max_docs": "25",
+  "engine": "weasyprint",
+  "workers": "3",
+  "http_workers": "8",
+  "delay": "0.08",
+  "nav_batch": "60",
+  "phase_timeout": "900",
+  "time_budget": "0",
+  "no_attachments": false,
+  "no_stamp": false,
+  "commit_pdf": true,
+  "publish_release": false,
+  "note": "validation: 2 sections, 25-page render cap, attachments + image optimisation",
+  "image_max_width": "1200",
+  "image_quality": "72"
+}

@@ -71,23 +71,40 @@ Nothing is silently skipped: filtered authoring artifacts (`_inclusionsLibrary`,
 ### In CI (recommended — needs internet + can publish the big file)
 
 `.build-config.json` controls a build. Pushing a change to that file starts the
-workflow; results land on the `docs-build` branch (reports, page map, excerpt, and
-the PDF itself when it fits in git) and, with `publish_release: true`, the complete
-PDF is attached to a GitHub Release.
+workflow; every ~100 s the runner pushes `build/state.txt` (current phase, memory,
+disk, live log tail) plus the reports to the **`docs-build`** branch, and with
+`publish_release: true` the complete PDF + `attachments.zip` are attached to a GitHub
+Release (split into `part-*` files with a `cat` line if a single upload is refused).
+Because state is pushed *while it works*, a build that gets cancelled mid-flight is
+still diagnosable: `bash scripts/watch_ci.sh` follows it live.
 
 ```json
 {
   "space_path": "Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263",
   "product": "BMC Helix ITSM", "version": "26.3",
   "phases": "inventory,fetch,render,assemble,verify",
-  "only_sections": "", "engine": "weasyprint",
-  "publish_release": true
+  "only_sections": "", "max_docs": "0",
+  "engine": "weasyprint", "workers": "3", "http_workers": "8", "delay": "0.08",
+  "nav_batch": "60", "image_max_width": "1200", "image_quality": "72",
+  "phase_timeout": "5400",
+  "no_attachments": false, "no_stamp": false,
+  "commit_pdf": true, "publish_release": true
 }
 ```
 
-Set `"only_sections": "Getting-started"` for a fast sample build, `"max_docs": "30"`
-for a smoke test.
+Two ready-made profiles ship in the repo:
 
+```bash
+make ci-validate && git push ...   # .build-config.validate.json - 2 sections, 25 pages
+make ci-full     && git push ...   # .build-config.full.json    - whole space, Release
+bash scripts/watch_ci.sh           # live progress from the docs-build branch
+```
+
+`selftest --with-render` and `integration_test --full` run *before* the build in CI,
+so a broken assumption fails in two minutes instead of two hours. If `assemble` is
+killed on a very large space (the footer-stamp pass is the memory-hungry part), the
+CI retries it with `--no-stamp` and says so in the report - the document stays
+complete and internally linked, only the printed page numbers are absent.
 ### Locally (same pipeline, your machine, ~30-60 min for the whole space)
 
 ```bash

@@ -12,7 +12,7 @@ PHASES ?= inventory,fetch,render,assemble,verify
 MAX_DOCS ?=
 EXTRA ?=
 
-.PHONY: help bootstrap selftest selftest-full probe pdf lint clean
+.PHONY: help bootstrap selftest selftest-full probe pdf e2e-mock lint clean watch ci-validate ci-full
 
 help:
 	@echo "make bootstrap      create .venv, install deps, run the offline self-test"
@@ -56,3 +56,14 @@ lint:
 
 clean:
 	rm -rf $(WORK) build
+
+ci-validate: ## arm the CI validation build (small scope) and show the push command
+	@cp .build-config.validate.json .build-config.json 2>/dev/null || true
+	@echo "git add .build-config.json && git commit -m 'CI: validation build' && git push origin HEAD:$$(git rev-parse --abbrev-ref HEAD)"
+
+ci-full: ## arm the complete build (whole space, published as a GitHub Release)
+	@cp .build-config.full.json .build-config.json
+	@echo "git add .build-config.json && git commit -m 'CI: full documentation build' && git push origin HEAD:$$(git rev-parse --abbrev-ref HEAD)"
+
+watch: ## follow the CI build's live state
+	bash scripts/watch_ci.sh
