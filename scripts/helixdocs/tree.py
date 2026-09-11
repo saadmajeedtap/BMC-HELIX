@@ -518,6 +518,15 @@ def nav_edges(soup, space_path, space_dot):
     return edges
 
 
+def _in_scope(doc, space_dot, wanted):
+    """Is this document inside one of the requested top-level sections?"""
+    if not wanted:
+        return True
+    rel = doc[len(space_dot) + 1:] if doc.startswith(space_dot + ".") else doc
+    top = rel.split(".")[0].lower()
+    return any(w == top or w in top or top in w for w in wanted)
+
+
 def nav_inventory(http, space_path, max_pages=20000, time_budget=None, verbose=True,
                   only=None, batch=48):
     """Breadth-first over pages, taking structure from the rendered nav and
@@ -565,9 +574,10 @@ def nav_inventory(http, space_path, max_pages=20000, time_budget=None, verbose=T
                     n["src"] = "nav"
                 if cd not in inv.nodes[pd]["children"]:
                     inv.nodes[pd]["children"].append(cd)
-                if wanted and pd == sd and not _section_matches(cd, title, wanted):
+                if wanted and not _in_scope(cd, sd, wanted):
+                    # recorded so the report can be honest about it, never crawled
                     n["out_of_scope"] = True
-                    if cd not in inv.denied:
+                    if pd == sd and cd not in inv.denied:
                         inv.denied.append(cd)
                     continue
                 if cd not in visited:
@@ -585,6 +595,9 @@ def nav_inventory(http, space_path, max_pages=20000, time_budget=None, verbose=T
                 n = inv.add(cd, a_txt or cd.rsplit(".", 1)[-1].replace("-", " "),
                              parent=d, depth=inv.nodes[d]["depth"] + 1, closed=False)
                 if n is None or n.get("out_of_scope"):
+                    continue
+                if wanted and not _in_scope(cd, sd, wanted):
+                    n["out_of_scope"] = True
                     continue
                 if n.get("src") is None:
                     n["src"] = "link"

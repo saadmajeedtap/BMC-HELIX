@@ -68,6 +68,8 @@ def parse_args(argv=None):
     ap.add_argument("--http-workers", type=int, default=8)
     ap.add_argument("--delay", type=float, default=0.08, help="seconds between requests")
     ap.add_argument("--tree-limit", type=int, default=500)
+    ap.add_argument("--enumerate-cap", type=int, default=40000,
+                    help="max pages to discover (0 = no limit)")
     ap.add_argument("--nav-batch", type=int, default=60,
                     help="pages fetched per enumeration round (bounds memory)")
     ap.add_argument("--prefer-tree-api", action="store_true",
@@ -139,7 +141,7 @@ def run(opts):
                 "rendered navigation and all in-space links (link closure) ...")
             only = [x for x in (opts.only_sections or "").split(",") if x.strip()]
             inv = nav_inventory(http, opts.space_path,
-                                max_pages=opts.max_docs or 20000,
+                                max_pages=opts.enumerate_cap or 10 ** 9,
                                 time_budget=opts.time_budget or None,
                                 verbose=True, only=only or None,
                                 batch=opts.nav_batch)
@@ -227,7 +229,7 @@ def run(opts):
             f"http={http.summary()}")
     elif os.path.exists(metas_path):
         metas = json.load(open(metas_path))
-    else:
+    elif set(phases) & {"render", "assemble", "verify"}:
         raise SystemExit("no metas.json - run the fetch phase first")
 
     # ----------------------------------------------------------------- 3 render
