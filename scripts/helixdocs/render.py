@@ -87,11 +87,35 @@ def _chromium_worker(jobs, workers):
     return asyncio.run(main())
 
 
+def engine_available(engine):
+    """Can this engine actually run here? (weasyprint needs pango/cairo, chromium
+    needs playwright) - so a missing dependency is a clear message, not a traceback."""
+    if engine == "weasyprint":
+        try:
+            import weasyprint                      # noqa: F401
+            return True
+        except Exception:
+            return False
+    if engine == "chromium":
+        try:
+            import playwright                      # noqa: F401
+            return True
+        except Exception:
+            return False
+    return True
+
+
 def render_all(metas, out_dir, engine="weasyprint", workers=3, page_size="A4",
                margin_mm=14, scale=0.92, fresh=False, limit=0, verbose=True):
     """Render every page that has HTML; returns {doc: {pdf, pages, ok, error}}."""
     pdf_dir = os.path.join(out_dir, "pdf")
     os.makedirs(pdf_dir, exist_ok=True)
+    if not engine_available(engine):
+        hint = ("install libpango-1.0-0 libpangocairo-1.0-0 libcairo2"
+                if engine == "weasyprint" else "pip install playwright && playwright install chromium")
+        print(f"[render] engine '{engine}' is not usable here; {hint}", flush=True)
+        return {d: {"ok": False, "error": f"engine-unavailable:{engine}",
+                   "pdf": "", "pages": 0} for d in metas}
     index_path = os.path.join(out_dir, "render-index.json")
     index = json.load(open(index_path)) if os.path.exists(index_path) else {}
     jobs = []

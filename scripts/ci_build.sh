@@ -26,10 +26,12 @@ note() { echo "$*" >> "$W/report.md"; }
 ARGS=(--space-path "${SPACE_PATH}" --product "${PRODUCT}" --version "${VERSION}"
       --workspace "$W" --out "$OUT_PDF" --engine "${ENGINE:-weasyprint}"
       --workers "${WORKERS:-3}" --http-workers "${HTTP_WORKERS:-8}"
-      --delay "${DELAY:-0.08}" --nav-batch "${NAV_BATCH:-60}")
+      --delay "${DELAY:-0.08}" --nav-batch "${NAV_BATCH:-60}"
+      --image-max-width "${IMAGE_MAX_WIDTH:-1200}" --image-quality "${IMAGE_QUALITY:-72}")
 [ -n "${ONLY_SECTIONS:-}" ] && ARGS+=(--only-sections "${ONLY_SECTIONS}")
 [ -n "${MAX_DOCS:-}" ] && [ "${MAX_DOCS}" != "0" ] && ARGS+=(--max-docs "${MAX_DOCS}")
 [ "${NO_ATTACH:-0}" = "1" ] && ARGS+=(--no-attachments)
+[ "${NO_IMAGE_OPT:-0}" = "1" ] && ARGS+=(--no-image-optimize)
 [ "${NO_STAMP:-0}" = "1" ] && ARGS+=(--no-stamp)
 [ -n "${TIME_BUDGET:-}" ] && [ "${TIME_BUDGET}" != "0" ] && ARGS+=(--time-budget "${TIME_BUDGET}")
 

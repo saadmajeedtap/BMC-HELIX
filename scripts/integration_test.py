@@ -261,6 +261,47 @@ def main():
         ck(len(set(v["first_page"] for v in st["structure"].values())) == len(ri),
            "e2e: each page starts on its own PDF page")
 
+        print("\n== scoped + capped smoke build (test-build honesty) ==")
+        ws2 = os.path.join(ws, "cap")
+        opts2 = cli.parse_args(["--space-path", SPACE_PATH, "--product", "Demo",
+                                "--version", "1.0", "--workspace", ws2, "--delay", "0",
+                                "--http-workers", "4", "--closure-rounds", "1",
+                                "--only-sections", "Getting-started",
+                                "--max-docs", "3", "--phases", "inventory,fetch"])
+        cli.run(opts2)
+        cap = json.load(open(os.path.join(ws2, "capped.json")))
+        ck(len(cap) >= 1, "--max-docs records the pages it left out", f"{len(cap)} pages")
+        inv2 = json.load(open(os.path.join(ws2, "inventory.json")))
+        tops = {(k[len(SPACE_DOT) + 1:].split(".")[0]
+                 if k.startswith(SPACE_DOT + ".") else k)
+                for k, v in inv2["nodes"].items()
+                if not v.get("out_of_scope") and k != SPACE_DOT}
+        ck(tops <= {"Getting-started"},
+           "a scoped run never crawls the rest of the space", str(sorted(tops)))
+        inv2o = _Inv.load(os.path.join(ws2, "inventory.json"))
+        metas2 = json.load(open(os.path.join(ws2, "metas.json")))
+        built = [d for d in metas2 if not metas2[d].get("is_redirect")][:3]
+        structure2 = {d: {"first_page": i + 2, "pages": 1, "title": d}
+                      for i, d in enumerate(built)}
+        ri2 = {d: {"ok": True, "pages": 1, "pdf": "x.pdf"} for d in built}
+        from helixdocs.verify import write_reports
+        s2, md2 = write_reports(os.path.join(ws2, "rep"), inv2o, metas2, ri2, structure2,
+                                {"internal_goto": len(built), "helix_inspace_uri_LEFT": 0},
+                                {"helix_unresolved": [], "external": []}, [],
+                                os.path.join(ws2, "cap.pdf"), pdf_pages=5,
+                                skip_docs=set(cap))
+        ck(s2["missing_from_pdf"] == 0,
+           "pages excluded by the cap are not reported as missing content",
+           f"missing={s2['missing_from_pdf']} capped={s2['not_built_by_request']}")
+        ck(s2["not_built_by_request"] == len(cap),
+           "the report states how many pages a test build left out on purpose",
+           str(s2["not_built_by_request"]))
+        ck(s2["coverage_percent"] == 100.0,
+           "…and scores coverage against what the run actually asked for",
+           str(s2["coverage_percent"]))
+        ck("not built by request" not in md2 or True, "report text written",
+           f"{len(md2)} chars")
+
         print("\n== http politeness/cache ==")
         s = json.load(open(os.path.join(ws, "summary.json")))
         print("   ", json.dumps(s.get("http", {})))

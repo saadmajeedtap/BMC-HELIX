@@ -37,9 +37,9 @@ from helixdocs.config import (DEFAULT_PRODUCT, DEFAULT_SPACE_PATH,        # noqa
                               DEFAULT_VERSION, is_denied, norm_doc, pretty_url, url_to_doc)
 from helixdocs.net import Http                                            # noqa: E402
 from helixdocs.page import PageBuilder, fetch_pages                       # noqa: E402
-from helixdocs.render import render_all                                   # noqa: E402
-from helixdocs.tree import (Inventory, bfs_inventory, build_inventory,      # noqa: E402
-                            nav_inventory)
+from helixdocs.render import engine_available, render_all                 # noqa: E402
+from helixdocs.tree import (Inventory, _in_scope, bfs_inventory,             # noqa: E402
+                            build_inventory, nav_inventory)
 from helixdocs.verify import (audit_links, check_content, make_samples,   # noqa: E402
                               write_reports)
 
@@ -79,6 +79,11 @@ def parse_args(argv=None):
     ap.add_argument("--max-pages", type=int, default=0,
                     help="cap the number of merged documentation pages (0 = all)")
     ap.add_argument("--fresh", action="store_true", help="ignore HTTP/render caches")
+    ap.add_argument("--no-image-optimize", action="store_true",
+                    help="keep portal images byte-for-byte (bigger PDF, exact source)")
+    ap.add_argument("--image-max-width", type=int, default=1400,
+                    help="resample mirrored images wider than this (0 = never)")
+    ap.add_argument("--image-quality", type=int, default=80, help="JPEG quality")
     ap.add_argument("--no-attachments", action="store_true",
                     help="do not mirror non-image attachments")
     ap.add_argument("--no-assets", action="store_true", help="skip images (fast, ugly)")
@@ -177,13 +182,21 @@ def run(opts):
     # ------------------------------------------------------------ 2 fetch/clean
     builder = PageBuilder(http, opts.space_path, ws,
                           mirror_attachments=not opts.no_attachments,
+                          optimize_images=not opts.no_image_optimize,
+                          image_max_width=opts.image_max_width,
+                          image_quality=opts.image_quality,
                           known_docs=set(inv.nodes), parent_map={
                               d: n.get("parent") for d, n in inv.nodes.items()})
     metas = {}
     if "fetch" in phases:
         todo = inv.walk()
         if opts.max_docs:
+            dropped = todo[opts.max_docs:]
             todo = todo[:opts.max_docs]
+            if dropped:
+                json.dump(dropped, open(os.path.join(ws, "capped.json"), "w"))
+                log(f"--max-docs: {len(dropped)} inventoried page(s) recorded in "
+                    f"capped.json and left out of this build on purpose")
         builder.known_docs = set(inv.nodes)
         builder.parent_map = {d: n.get("parent") for d, n in inv.nodes.items()}
         log(f"fetching + cleaning {len(todo)} pages ...")
@@ -199,7 +212,11 @@ def run(opts):
                             inv.denied.append(fd)
             new = [d for d in found
                    if d and d not in inv.nodes and not is_denied(d)
-                   and d.startswith(inv.space_dot)]
+                   and d.startswith(inv.space_dot)
+                   and _in_scope(d, inv.space_dot,
+                                 {w.strip().lower().replace(" ", "-")
+                                  for w in opts.only_sections.split(",") if w.strip()}
+                                 or None)]
             if not new:
                 break
             log(f"closure round {rnd+1}: {len(new)} page(s) reachable by link but "
@@ -240,7 +257,11 @@ def run(opts):
                                   fresh=opts.fresh, limit=opts.max_docs or 0,
                                   verbose=True)
         bad = [d for d, v in render_index.items() if not v.get("ok")]
-        if bad and opts.retry_engine != "none" and opts.retry_engine != opts.engine:
+        if bad and opts.retry_engine != "none" and not engine_available(opts.retry_engine):
+            log(f"not retrying with {opts.retry_engine}: its dependencies are not "
+                f"installed here ({len(bad)} page(s) stay unrendered)")
+        if bad and opts.retry_engine != "none" and opts.retry_engine != opts.engine \
+                and engine_available(opts.retry_engine):
             log(f"re-rendering {len(bad)} failed page(s) with {opts.retry_engine} ...")
             for d in bad:
                 p = render_index[d].get("pdf")
@@ -274,12 +295,14 @@ def run(opts):
         structure = json.load(open(os.path.join(ws, "structure.json")))["structure"]
         stats, samples = audit_links(rd, opts.space_path, inv.space_dot)
         rows = check_content(rd, structure, metas)
+        capped_path = os.path.join(ws, "capped.json")
+        skip_docs = set(json.load(open(capped_path))) if os.path.exists(capped_path) else set()
         extra = {"build_seconds": round(time.time() - t_start, 1),
                  "engine": opts.engine, "http": http.summary(),
                  "assets_mb": round(_dir_mb(os.path.join(ws, "assets")), 1)}
         summary2, report_md = write_reports(ws, inv, metas, render_index, structure,
                                             stats, samples, rows, out_pdf, extra,
-                                            pdf_pages=len(rd.pages))
+                                            pdf_pages=len(rd.pages), skip_docs=skip_docs)
         summary.update(summary2)
         if not opts.skip_verify_samples:
             idx = [0, 1] + sorted(set([r["page"] for r in rows[::max(1, len(rows)//8)]]))[:8]
@@ -383,8 +406,13 @@ if __name__ == "__main__":
     hard_fail = s.get("missing_from_pdf", 0) or s.get("fetch_failures", 0)
     left = s.get("links", {}).get("helix_inspace_uri_LEFT", 0) if isinstance(s.get("links"), dict) \
         else s.get("helix_inspace_uri_LEFT", 0)
-    if hard_fail or left:
+    capped = s.get("not_built_by_request", 0) or 0
+    if hard_fail or (left and not capped):
         print(f"BUILD INCOMPLETE: missing={s.get('missing_from_pdf')} "
               f"fetch_failures={s.get('fetch_failures')} unresolved_links={left}",
               flush=True)
         sys.exit(3)
+    if left and capped:
+        print(f"NOTE: {left} in-space link(s) still point at the portal because "
+              f"{capped} page(s) were excluded by --max-docs; a full build resolves "
+              f"them to in-document jumps", flush=True)

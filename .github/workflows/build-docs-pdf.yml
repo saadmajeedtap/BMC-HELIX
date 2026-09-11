@@ -29,7 +29,9 @@ jobs:
                    "only_sections": "ONLY_SECTIONS", "max_docs": "MAX_DOCS",
                    "http_workers": "HTTP_WORKERS", "no_stamp": "NO_STAMP",
                    "commit_pdf": "COMMIT_PDF", "publish_release": "PUBLISH_RELEASE",
-                   "nav_batch": "NAV_BATCH", "time_budget": "TIME_BUDGET",
+                   "nav_batch": "NAV_BATCH", "image_max_width": "IMAGE_MAX_WIDTH",
+                   "image_quality": "IMAGE_QUALITY", "no_image_optimize": "NO_IMAGE_OPT",
+                   "time_budget": "TIME_BUDGET",
                    "phase_timeout": "PHASE_TIMEOUT"}
           c = json.load(open(".build-config.json"))
           print("WORKDIR=/tmp/helix-build")

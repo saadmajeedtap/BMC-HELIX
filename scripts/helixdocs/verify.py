@@ -98,14 +98,16 @@ def check_content(reader, structure, metas, docs=None, per_doc_chars_min=60):
 
 
 def write_reports(out_dir, inv, metas, render_index, structure, stats, samples,
-                  content_rows, pdf_path, extra=None, pdf_pages=None):
+                  content_rows, pdf_path, extra=None, pdf_pages=None, skip_docs=None):
     os.makedirs(out_dir, exist_ok=True)
     total_inv = len(inv.nodes)
     rendered = sum(1 for v in render_index.values() if v.get("ok"))
     redirects = sum(1 for m in metas.values() if m and m.get("is_redirect"))
     failed = [d for d, m in metas.items() if m and m.get("error")]
+    skip_docs = skip_docs or set()
     missing = [d for d in inv.nodes
-               if d not in structure and not (metas.get(d) or {}).get("is_redirect")
+               if d not in structure and d not in skip_docs
+               and not (metas.get(d) or {}).get("is_redirect")
                and not (metas.get(d) or {}).get("error")]
     thin = [r for r in content_rows if r["status"] != "ok"]
     summary = {
@@ -120,8 +122,11 @@ def write_reports(out_dir, inv, metas, render_index, structure, stats, samples,
         "filtered_authoring_artifacts": len(inv.denied),
         "missing_from_pdf": len(missing),
         "thin_or_empty_pages": len(thin),
-        "coverage_percent": round(100.0 * (total_inv - len(missing)) / max(1, total_inv), 3),
-        "links": dict(stats),
+        "not_built_by_request": len(skip_docs),
+        "coverage_base": total_inv - len(skip_docs),
+        "coverage_percent": round(100.0 * (total_inv - len(skip_docs) - len(missing))
+                                  / max(1, total_inv - len(skip_docs)), 3),
+        "links": dict(stats or {}),
         "expand_failures": len(inv.expand_failures),
     }
     if extra:
@@ -144,14 +149,16 @@ def write_reports(out_dir, inv, metas, render_index, structure, stats, samples,
            "`internal_goto` = clicks that stay inside the file. "
            "`helix_inspace_uri_LEFT` must be 0 - that would mean a link to this "
            "documentation space still opens a browser.", ""]
-    if samples["helix_unresolved"]:
+    unresolved = (samples or {}).get("helix_unresolved") or []
+    if unresolved:
         md += ["### Links that could not be resolved locally", ""]
-        for s in samples["helix_unresolved"]:
+        for s in unresolved:
             md.append(f"- p{s['page']}: `{s['uri'][:160]}`")
         md.append("")
-    if samples["external"]:
+    kept_external = (samples or {}).get("external") or []
+    if kept_external:
         md += ["### Kept as external (outside this documentation space)", ""]
-        for s in samples["external"][:15]:
+        for s in kept_external[:15]:
             md.append(f"- p{s['page']}: `{s['uri'][:150]}`")
         md.append("")
     if thin:
@@ -177,6 +184,7 @@ def write_reports(out_dir, inv, metas, render_index, structure, stats, samples,
 def make_samples(pdf_path, out_dir, page_indexes, width=1000):
     """Rasterise a few PDF pages for visual QA (needs pypdfium2)."""
     out = []
+    os.makedirs(out_dir, exist_ok=True)
     try:
         import pypdfium2 as pdfium
     except Exception as exc:

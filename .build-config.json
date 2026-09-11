@@ -16,5 +16,7 @@
   "no_stamp": false,
   "commit_pdf": true,
   "publish_release": false,
-  "note": "validation: 2 sections crawled fully, render capped at 25 pages, attachments on"
+  "note": "validation: 2 sections, 25-page render cap, attachments + image optimisation",
+  "image_max_width": "1200",
+  "image_quality": "72"
 }

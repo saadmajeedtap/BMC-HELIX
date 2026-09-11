@@ -9,6 +9,7 @@ never leaves the PDF.
 from __future__ import annotations
 
 import hashlib
+import io
 import os
 import re
 from urllib.parse import unquote, urljoin, urlsplit
@@ -101,6 +102,44 @@ FORCE_SHOW
 """
 
 
+def optimize_image(body, max_width=1400, quality=80):
+    """Recompress a mirrored image for print: cap the width, drop metadata, turn
+    opaque PNGs into progressive JPEGs. Transparency and animation are preserved
+    by leaving those files alone. Returns (bytes, ext) - ext None means "unchanged".
+    """
+    try:
+        from PIL import Image
+        im = Image.open(io.BytesIO(body))
+        im.load()
+    except Exception:
+        return body, None
+    fmt = (im.format or "").upper()
+    try:
+        animated = fmt in ("GIF", "WEBP") and getattr(im, "n_frames", 1) > 1
+    except Exception:
+        animated = False
+    if animated:
+        return body, None
+    has_alpha = im.mode in ("RGBA", "LA", "PA") or (fmt == "PNG" and "transparency" in im.info)
+    if max_width and im.width > max_width:
+        h = max(1, int(round(im.height * max_width / im.width)))
+        im = im.resize((max_width, h), Image.LANCZOS)
+    buf = io.BytesIO()
+    try:
+        if has_alpha:
+            im.save(buf, "PNG", optimize=True)
+            out, ext = buf.getvalue(), ".png"
+        else:
+            im.convert("RGB").save(buf, "JPEG", quality=quality, optimize=True,
+                                   progressive=True)
+            out, ext = buf.getvalue(), ".jpg"
+    except Exception:
+        return body, None
+    if len(out) >= len(body) * 0.92:      # not worth the (small) risk of a change
+        return body, None
+    return out, ext
+
+
 def _abs(base, href):
     try:
         return urljoin(base, unquote(href or ""))
@@ -118,7 +157,8 @@ class PageBuilder:
 
     def __init__(self, http, space_path, out_dir, mirror_attachments=True,
                  max_asset_bytes=12 * 1024 * 1024, known_docs=None, parent_map=None,
-                 max_attach_bytes=60 * 1024 * 1024):
+                 max_attach_bytes=60 * 1024 * 1024, optimize_images=True,
+                 image_max_width=1400, image_quality=80):
         self.http = http
         self.space_path = space_path
         self.space_dot = space_path.replace("/", ".")
@@ -131,6 +171,9 @@ class PageBuilder:
         self.mirror_attachments = mirror_attachments
         self.max_asset_bytes = max_asset_bytes
         self.max_attach_bytes = max_attach_bytes
+        self.optimize_images = optimize_images
+        self.image_max_width = image_max_width
+        self.image_quality = image_quality
         self.known_docs = known_docs or set()
         self.parent_map = parent_map or {}
         self._asset_index = {}
@@ -188,6 +231,11 @@ class PageBuilder:
         status, body, ctype = r
         if status != 200 or not body:
             return None, f"http-{status}"
+        if kind != "attach" and self.optimize_images:
+            nbody, next = optimize_image(body, self.image_max_width, self.image_quality)
+            if next:
+                body, ext = nbody, next
+                dest = os.path.join(self.assets_dir, key + ext)
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         if not (os.path.exists(dest) and os.path.getsize(dest) == len(body)):
             with open(dest, "wb") as fh:
