@@ -79,6 +79,9 @@ def parse_args(argv=None):
     ap.add_argument("--max-pages", type=int, default=0,
                     help="cap the number of merged documentation pages (0 = all)")
     ap.add_argument("--fresh", action="store_true", help="ignore HTTP/render caches")
+    ap.add_argument("--page-render-timeout", type=int, default=240,
+                    help="seconds a single page may take in WeasyPrint before it is "
+                         "deferred to the retry engine and reported (0 = unlimited)")
     ap.add_argument("--no-image-optimize", action="store_true",
                     help="keep portal images byte-for-byte (bigger PDF, exact source)")
     ap.add_argument("--image-max-width", type=int, default=1400,
@@ -255,7 +258,7 @@ def run(opts):
         log(f"rendering pages with {opts.engine} ...")
         render_index = render_all(metas, ws, engine=opts.engine, workers=opts.workers,
                                   fresh=opts.fresh, limit=opts.max_docs or 0,
-                                  verbose=True)
+                                  verbose=True, page_timeout=opts.page_render_timeout)
         bad = [d for d, v in render_index.items() if not v.get("ok")]
         if bad and opts.retry_engine != "none" and not engine_available(opts.retry_engine):
             log(f"not retrying with {opts.retry_engine}: its dependencies are not "
@@ -269,7 +272,8 @@ def run(opts):
                     os.remove(p)
             only = {d: metas[d] for d in bad if d in metas}
             render_index.update(render_all(only, ws, engine=opts.retry_engine,
-                                           workers=opts.workers, fresh=True))
+                                           workers=opts.workers, fresh=True,
+                                           page_timeout=0))
     else:
         ri = os.path.join(ws, "render-index.json")
         render_index = json.load(open(ri)) if os.path.exists(ri) else {}

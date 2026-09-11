@@ -18,7 +18,21 @@ SIZE_MM = {"A4": (210, 297), "Letter": (215.9, 279.4)}
 
 
 def _wp_worker(args):
-    slug, html_file, pdf_file, page_size, margin_mm, scale = args
+    """Render one page. A per-page alarm keeps a pathological page (a 3 000-row
+    table) from eating the whole phase: it fails that page, which then goes to the
+    retry engine and into the report, instead of stalling the build in silence."""
+    slug, html_file, pdf_file, page_size, margin_mm, scale, timeout_s = args
+    import signal
+    armed = False
+    if timeout_s and hasattr(signal, "SIGALRM"):
+        def _burst(signum, frame):
+            raise TimeoutError(f"page render exceeded {timeout_s}s")
+        try:
+            signal.signal(signal.SIGALRM, _burst)
+            signal.alarm(int(timeout_s))
+            armed = True
+        except (ValueError, OSError):
+            armed = False                # not in a main thread -> no alarm
     try:
         from weasyprint import HTML
         doc = HTML(filename=html_file).render()
@@ -27,23 +41,49 @@ def _wp_worker(args):
         return slug, {"pages": n, "ok": True}
     except Exception as exc:
         return slug, {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+    finally:
+        if armed:
+            signal.alarm(0)
 
 
-def render_weasyprint(jobs, workers=3):
-    """jobs: list of (slug, html_file, pdf_file, page_size, margin_mm, scale)."""
+def render_weasyprint(jobs, workers=3, verbose=True, log_every=25):
+    """jobs: list of (slug, html_file, pdf_file, page_size, margin_mm, scale, timeout).
+
+    Results are collected as they arrive, so if a worker dies (OOM) the pages already
+    rendered are kept and only the remainder is redone serially - and progress is
+    printed, so a big space never looks like a hang.
+    """
     if not jobs:
         return {}
     res = {}
+    t0 = time.time()
     try:
-        from concurrent.futures import ProcessPoolExecutor
+        from concurrent.futures import ProcessPoolExecutor, as_completed
         with ProcessPoolExecutor(max_workers=max(1, workers)) as ex:
-            for slug, r in ex.map(_wp_worker, jobs, chunksize=8):
-                res[slug] = r
+            futs = {ex.submit(_wp_worker, j): j[0] for j in jobs}
+            try:
+                for fut in as_completed(futs):
+                    slug = futs[fut]
+                    try:
+                        got, r = fut.result()
+                    except Exception as exc:            # child killed / crashed
+                        res[slug] = {"ok": False, "error": f"worker-lost: "
+                                     f"{type(exc).__name__}: {exc}"}
+                        continue
+                    res[got] = r
+                    if verbose and len(res) % log_every == 0 and len(res) < len(jobs):
+                        el = time.time() - t0
+                        print(f"[render] {len(res)}/{len(jobs)} pages "
+                              f"({el:.0f}s, {el / len(res):.1f}s/page)", flush=True)
+            except Exception as exc:
+                print(f"[render] pool broke after {len(res)}/{len(jobs)} pages ({exc}); "
+                      f"finishing the rest in this process", flush=True)
     except Exception as exc:  # multiprocessing unavailable -> serial
         print(f"[render] process pool unavailable ({exc}); running serial", flush=True)
-        for j in jobs:
-            slug, r = _wp_worker(j)
-            res[slug] = r
+    left = [j for j in jobs if j[0] not in res]
+    for j in left:
+        slug, r = _wp_worker(j)
+        res[slug] = r
     return res
 
 
@@ -106,7 +146,8 @@ def engine_available(engine):
 
 
 def render_all(metas, out_dir, engine="weasyprint", workers=3, page_size="A4",
-               margin_mm=14, scale=0.92, fresh=False, limit=0, verbose=True):
+               margin_mm=14, scale=0.92, fresh=False, limit=0, verbose=True,
+               page_timeout=240):
     """Render every page that has HTML; returns {doc: {pdf, pages, ok, error}}."""
     pdf_dir = os.path.join(out_dir, "pdf")
     os.makedirs(pdf_dir, exist_ok=True)
@@ -148,8 +189,10 @@ def render_all(metas, out_dir, engine="weasyprint", workers=3, page_size="A4",
     res = dict(done_now)
     if jobs:
         if engine == "weasyprint":
-            raw = render_weasyprint([(slug, hf, pf, page_size, margin_mm, scale)
-                                     for _doc, slug, hf, pf in jobs], workers)
+            raw = render_weasyprint([(slug, hf, pf, page_size, margin_mm, scale,
+                                      page_timeout)
+                                     for _doc, slug, hf, pf in jobs], workers,
+                                    verbose=verbose)
         else:
             raw = _chromium_worker([(slug, hf, pf, page_size, margin_mm, scale)
                                     for _doc, slug, hf, pf in jobs], workers)
