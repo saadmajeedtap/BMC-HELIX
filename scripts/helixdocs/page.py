@@ -211,7 +211,7 @@ class PageBuilder:
         if node is not None:
             a = node.find("a", href=True)
             tgt = url_to_doc(_abs(base, a["href"]), self.space_path, self.space_dot) if a else None
-            if True:
+            if node is not None:
                 meta["is_redirect"] = True
                 meta["redirect_to"] = tgt
                 meta["notes"].append("redirect" if tgt else "redirect-target-unresolved")
