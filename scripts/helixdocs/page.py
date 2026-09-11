@@ -117,7 +117,7 @@ class PageBuilder:
     """Turns portal HTML into one standalone HTML file plus metadata."""
 
     def __init__(self, http, space_path, out_dir, mirror_attachments=True,
-                 max_asset_bytes=40 * 1024 * 1024, known_docs=None):
+                 max_asset_bytes=40 * 1024 * 1024, known_docs=None, parent_map=None):
         self.http = http
         self.space_path = space_path
         self.space_dot = space_path.replace("/", ".")
@@ -130,7 +130,36 @@ class PageBuilder:
         self.mirror_attachments = mirror_attachments
         self.max_asset_bytes = max_asset_bytes
         self.known_docs = known_docs or set()
+        self.parent_map = parent_map or {}
         self._asset_index = {}
+
+    # ------------------------------------------------------------------ links
+    def resolve_link(self, absu):
+        """Absolute portal URL -> (canonical doc id, how).
+
+        Handles the shapes the portal really uses plus the sloppy ones authors
+        leave behind: relative sibling links resolved against a pretty URL point
+        one level too deep, so a link whose target does not exist is retried as a
+        sibling of its parent.
+        """
+        d = url_to_doc(absu, self.space_path, self.space_dot)
+        if not d:
+            return None, None
+        known = self.known_docs
+        if not known or d in known:
+            return d, "direct"
+        # not a page we know of: the naive interpretation of a relative link can
+        # sit one level too deep, so also try it as a sibling of its parent.
+        parts = d.split(".")
+        for i in range(len(parts) - 1, 2, -1):
+            head, tail = ".".join(parts[:i]), parts[i]
+            par = self.parent_map.get(head)
+            cand = f"{par}.{tail}" if par else None
+            if cand and cand in known:
+                return cand, "sibling-recovered"
+        # neither form is known: keep the naive one so the closure pass can
+        # discover pages the navigation hides, and record it for the report.
+        return d, "unverified"
 
     # ------------------------------------------------------------------ assets
     def _localize(self, url, doc=None, kind="asset"):
@@ -168,7 +197,8 @@ class PageBuilder:
         meta = {"doc": doc, "title": title_hint, "words": 0, "text_chars": 0,
                 "images": 0, "tables": 0, "links_internal": 0, "links_external": 0,
                 "attachments": [], "is_redirect": False, "redirect_to": None,
-                "found_docs": [], "filtered_refs": [], "notes": []}
+                "found_docs": [], "filtered_refs": [], "unresolved_links": [],
+                "notes": []}
         base = pretty_url(doc, self.space_path, self.space_dot)
         soup = BeautifulSoup(html or "", "lxml")
 
@@ -181,10 +211,10 @@ class PageBuilder:
         if node is not None:
             a = node.find("a", href=True)
             tgt = url_to_doc(_abs(base, a["href"]), self.space_path, self.space_dot) if a else None
-            if tgt:
+            if True:
                 meta["is_redirect"] = True
                 meta["redirect_to"] = tgt
-                meta["notes"].append("redirect")
+                meta["notes"].append("redirect" if tgt else "redirect-target-unresolved")
                 meta["text_chars"] = len(html or "")
                 return meta
 
@@ -310,7 +340,11 @@ class PageBuilder:
                     a["class"] = (a.get("class") or []) + ["hx-dead-anchor"]
                 continue
             absu = _abs(base, href)
-            d = url_to_doc(absu, self.space_path, self.space_dot)
+            d, how = self.resolve_link(absu)
+            if how == "sibling-recovered":
+                meta["notes"].append(f"recovered-link:{d}")
+            if how == "unverified":
+                meta["unresolved_links"].append(absu)
             if d:
                 if is_denied(d):
                     meta["filtered_refs"].append(d)
@@ -332,7 +366,7 @@ class PageBuilder:
                     if self.mirror_attachments:
                         furl, note = self._localize(absu, doc, "attach")
                         meta["attachments"][-1]["mirrored"] = bool(furl)
-                        meta["attachments"][-1]["local"] = furl or ""
+                        meta["attachments"][-1]["local"] = (furl or "").replace("file://", "")
                     span = soup.new_tag("span")
                     span["class"] = ["hx-attach"]
                     span.string = "".join(a.stripped_strings) or fname
@@ -406,7 +440,7 @@ def fetch_pages(http, inv, builder, docs, verbose=True):
             metas[d] = {"doc": d, "error": f"http-{status}", "title": inv.nodes[d]["title"],
                         "text_chars": 0, "words": 0, "images": 0, "tables": 0,
                         "links_internal": 0, "links_external": 0, "attachments": [],
-                        "found_docs": [], "filtered_refs": [],
+                        "found_docs": [], "filtered_refs": [], "unresolved_links": [],
                         "is_redirect": False, "redirect_to": None, "notes": []}
             continue
         metas[d] = builder.build(d, html, title_hint=inv.nodes[d]["title"],

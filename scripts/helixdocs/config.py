@@ -1,9 +1,16 @@
 """Target configuration and shared constants."""
 from __future__ import annotations
 
+import os
 import re
 
-BASE = "https://docs.helixops.ai"
+#: Point this at a staging/private mirror with HELIX_BASE_URL to build elsewhere.
+BASE = os.environ.get("HELIX_BASE_URL", "https://docs.helixops.ai").rstrip("/")
+_base_host = re.sub(r"^https?://", "", BASE).split("/")[0].split(":")[0]
+
+#: Absolute links to these hosts are treated as "the same documentation" even when
+#: they are written with the old docs.bmc.com URL shape or as root-relative URLs.
+DOC_HOSTS = tuple(sorted({h for h in (_base_host, "docs.helixops.ai", "docs.bmc.com") if h}))
 
 #: The documentation space the user asked for.
 DEFAULT_SPACE_PATH = "Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263"
@@ -46,9 +53,6 @@ ATTACH_EXT = {
     ".json", ".xml", ".mp4", ".webm", ".mov", ".tgz", ".jar", ".vsix", ".md",
 }
 
-#: Absolute links to these hosts are treated as "the same documentation" even when
-#: they are written with the old docs.bmc.com URL shape.
-DOC_HOSTS = ("docs.helixops.ai", "docs.bmc.com")
 
 
 def space_dot(space_path: str) -> str:
@@ -104,6 +108,7 @@ def url_to_doc(url: str, space_path: str, space_dot_name: str) -> str | None:
     if not re.match(r"https?://", u):
         return None
     host = re.match(r"https?://([^/]+)", u).group(1).lower()
+    host = host.rsplit(":", 1)[0] if re.search(r":\d+$", host) else host
     if host not in DOC_HOSTS:
         return None
     if _first_path_segment(u) == "bin":

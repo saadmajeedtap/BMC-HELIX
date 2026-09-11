@@ -48,6 +48,13 @@ print(re.sub(r'\s+',' ', r.text)[:1400])
 print("```")
 PY
 
+echo "## integration test (mock portal, end-to-end)"
+python3 scripts/integration_test.py 2>&1 | tail -6 || { echo "INTEGRATION FAILED"; echo 3 > "$BUILD_RC_FILE"; }
+
+echo "## live smoke test (real portal page -> cleaner, no writes)"
+python3 scripts/build_docs_pdf.py --smoke-page \
+  "https://docs.helixops.ai/bin/${SPACE_PATH}/Release-notes-and-notices/" 2>&1 | tail -22 || true
+
 echo "## build"
 python3 scripts/build_docs_pdf.py \
   --space-path "${SPACE_PATH}" --product "${PRODUCT}" --version "${VERSION}" \

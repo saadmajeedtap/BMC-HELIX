@@ -258,20 +258,57 @@ class Inventory:
                 n["closed"] = closed
         return n
 
+    def ensure_root(self, title=""):
+        """The space's own landing page is part of the documentation - keep it."""
+        root = self.space_dot
+        if root not in self.nodes:
+            self.nodes[root] = {"doc": root, "title": title or "Home", "parent": None,
+                               "depth": 1, "children": [], "closed": False,
+                               "url": pretty_url(root, self.space_path, self.space_dot),
+                               "slug": safe_name(root) or "space-home", "is_space_root": True}
+        for d, n in self.nodes.items():
+            if d == root:
+                continue
+            if n.get("parent") in (self.root_doc, None) or n["parent"] not in self.nodes:
+                n["parent"] = root
+                n["depth"] = 2 if n.get("depth", 1) <= 1 else n["depth"] + 1
+        self.nodes[root]["children"] = [d for d, n in self.nodes.items()
+                                       if n.get("parent") == root]
+        return root
+
     def roots(self):
         return [d for d, n in self.nodes.items()
                 if not n.get("parent") or n["parent"] not in self.nodes]
 
+    def children(self, doc):
+        """Ordered children of doc; unreached nodes hang off the space root so the
+        build order always starts at the portal landing page and never drops a page."""
+        n = self.nodes.get(doc)
+        if n is None:
+            return []
+        kids = [c for c in n.get("children", []) if c in self.nodes and c != doc]
+        if doc == self.space_dot:
+            linked = {c for v in self.nodes.values() for c in (v.get("children") or [])}
+            ancestors = set()
+            for v in self.nodes.values():
+                ancestors.add(v.get("parent"))
+            kids += [d for d in self.nodes
+                     if d != doc and d not in linked and d not in kids
+                     and (d not in ancestors or not self.nodes[d].get("parent"))]
+        return kids
+
     def walk(self):
         order, seen = [], set()
 
-        def go(doc):
-            if doc in seen or doc not in self.nodes:
+        def go(doc, depth=0):
+            if doc in seen or doc not in self.nodes or depth > 200:
                 return
             seen.add(doc)
             order.append(doc)
-            for c in self.nodes[doc]["children"]:
-                go(c)
+            for c in self.children(doc):
+                go(c, depth + 1)
+        if self.space_dot in self.nodes:
+            go(self.space_dot)
         for r in self.roots():
             go(r)
         for d in list(self.nodes):
@@ -320,6 +357,7 @@ def build_inventory(http, space_path, limit=500, max_rounds=60, time_budget=None
                            + (diag_path or "tree diagnostics"))
     for c in kids:
         inv.add(c["doc"], c["title"], parent=inv.root_doc, depth=1, closed=c["closed"])
+    inv.ensure_root()
     frontier = [d for d in inv.nodes if inv.nodes[d]["closed"] is not False]
     rounds = 0
     while frontier and rounds < max_rounds:

@@ -34,7 +34,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from helixdocs.assemble import assemble                                  # noqa: E402
 from helixdocs.config import (DEFAULT_PRODUCT, DEFAULT_SPACE_PATH,        # noqa: E402
-                              DEFAULT_VERSION, is_denied, norm_doc, pretty_url)
+                              DEFAULT_VERSION, is_denied, norm_doc, pretty_url, url_to_doc)
 from helixdocs.net import Http                                            # noqa: E402
 from helixdocs.page import PageBuilder, fetch_pages                       # noqa: E402
 from helixdocs.render import render_all                                   # noqa: E402
@@ -81,6 +81,8 @@ def parse_args(argv=None):
     ap.add_argument("--inventory", default="", help="reuse an inventory.json (skips phase 1)")
     ap.add_argument("--time-budget", type=int, default=0,
                     help="stop after N seconds and build what was fetched")
+    ap.add_argument("--smoke-page", default="",
+                    help="fetch one live URL, run the cleaning rules, print what survived")
     return ap.parse_args(argv)
 
 
@@ -89,8 +91,10 @@ def prune_sections(inv, only):
     wanted = {w.strip().lower().replace(" ", "-") for w in only if w.strip()}
     if not wanted:
         return inv
-    roots = {norm_doc(d): inv.nodes[d]["title"].lower().replace(" ", "-")
-             for d in inv.roots()}
+    # a section is a menu entry directly under the space (or a top-level root)
+    roots = {d: (inv.nodes[d]["title"] or "").lower().replace(" ", "-")
+             for d in inv.nodes
+             if inv.nodes[d].get("depth", 1) <= 2 and not inv.nodes[d].get("is_space_root")}
     top = [d for d, t in roots.items() if t in wanted or any(w in t for w in wanted)]
     for d in top:
         stack = [d]
@@ -148,12 +152,16 @@ def run(opts):
 
     # ------------------------------------------------------------ 2 fetch/clean
     builder = PageBuilder(http, opts.space_path, ws,
-                          mirror_attachments=not opts.no_attachments)
+                          mirror_attachments=not opts.no_attachments,
+                          known_docs=set(inv.nodes), parent_map={
+                              d: n.get("parent") for d, n in inv.nodes.items()})
     metas = {}
     if "fetch" in phases:
         todo = inv.walk()
         if opts.max_docs:
             todo = todo[:opts.max_docs]
+        builder.known_docs = set(inv.nodes)
+        builder.parent_map = {d: n.get("parent") for d, n in inv.nodes.items()}
         log(f"fetching + cleaning {len(todo)} pages ...")
         metas = fetch_pages(http, inv, builder, todo)
         # link-closure sweep: pages that exist but are not in the menu
@@ -162,6 +170,9 @@ def run(opts):
             for d, m in metas.items():
                 if m:
                     found.update(m.get("found_docs") or [])
+                    for fd in (m.get("filtered_refs") or []):   # auditable, not silent
+                        if fd not in inv.nodes and fd not in inv.denied:
+                            inv.denied.append(fd)
             new = [d for d in found
                    if d and d not in inv.nodes and not is_denied(d)
                    and d.startswith(inv.space_dot)]
@@ -169,23 +180,23 @@ def run(opts):
                 break
             log(f"closure round {rnd+1}: {len(new)} page(s) reachable by link but "
                 f"not in the navigation tree -> added")
+            root_parent = inv.space_dot if inv.space_dot in inv.nodes else EXTRA_PARENT
             for d in new:
-                inv.add(d, d.rsplit(".", 1)[-1].replace("-", " "), parent=EXTRA_PARENT,
-                        depth=2)
-            if EXTRA_PARENT not in inv.nodes:
-                inv.nodes[EXTRA_PARENT] = {"doc": EXTRA_PARENT,
-                                           "title": "Additional pages (linked, not in menu)",
-                                           "parent": None, "depth": 1,
-                                           "children": sorted(new),
-                                           "closed": False,
-                                           "url": "", "slug": "additional"}
-            else:
-                inv.nodes[EXTRA_PARENT]["children"] = sorted(
-                    set(inv.nodes[EXTRA_PARENT]["children"]) | set(new))
+                inv.add(d, d.rsplit(".", 1)[-1].replace("-", " "), parent=root_parent,
+                        depth=inv.nodes.get(root_parent, {}).get("depth", 1) + 1)
+            if root_parent == EXTRA_PARENT:  # no space root: keep them visible anyway
+                inv.nodes.setdefault(EXTRA_PARENT, {
+                    "doc": EXTRA_PARENT, "title": "Additional pages (linked, not in menu)",
+                    "parent": None, "depth": 1, "children": sorted(new), "closed": False,
+                    "url": "", "slug": "additional"})
             extra_meta = fetch_pages(http, inv, builder, sorted(new))
             metas.update(extra_meta)
+            for d2, m2 in extra_meta.items():   # second-order discovery
+                if m2:
+                    found.update(m2.get("found_docs") or [])
         metas = {d: m for d, m in metas.items() if m is not None}
         json.dump(metas, open(metas_path, "w"))
+        inv.save(inv_path)   # persist the inventory *including* closure additions
         ok = sum(1 for m in metas.values() if "error" not in m)
         red = sum(1 for m in metas.values() if m.get("is_redirect"))
         log(f"fetched: ok={ok} redirect={red} http-fail={len(metas)-ok-red} "
@@ -254,6 +265,8 @@ def run(opts):
                                                 "thin_or_empty_pages", "fetch_failures")}))
     if opts.report and report_md:
         open(opts.report, "w").write(report_md + "\n")
+    summary.setdefault("http", http.summary())
+    summary.setdefault("inventory", inv.stats())
     json.dump(summary, open(os.path.join(ws, "summary.json"), "w"), indent=1)
     log(f"DONE in {time.time()-t_start:.0f}s")
     return summary
@@ -270,8 +283,42 @@ def _dir_mb(path):
     return tot / 1e6
 
 
+def smoke(url):
+    """Run the real cleaning pipeline over one live page and report on it."""
+    from helixdocs.config import space_dot as _sd
+    from helixdocs.page import PageBuilder
+    h = Http("/tmp/helix-smoke/http", workers=1, delay=0)
+    r = h.get(url)
+    if r is None or r[0] != 200:
+        print(f"smoke: could not fetch {url}: {r}")
+        return 1
+    space = opts_space_from_url(url)
+    inv = Inventory(space)
+    doc = url_to_doc(url, space, _sd(space)) or inv.space_dot
+    b = PageBuilder(h, space, "/tmp/helix-smoke/out", mirror_attachments=True)
+    meta = b.build(doc, r[1])
+    out = {k: v for k, v in meta.items() if k not in ("html_file",)}
+    print("smoke doc:", doc)
+    print("meta:", json.dumps(out, indent=1)[:2600])
+    html = open(meta["html_file"], encoding="utf-8").read()
+    print(f"html: {len(html)} bytes; images localised: {meta['images']}; "
+          f"tables: {meta['tables']}; internal links: {meta['links_internal']}; "
+          f"external: {meta['links_external']}")
+    for probe in ("xwiki:content", "collapse", "tab-pane", "display:none"):
+        print(f"  contains {probe!r}: {probe in html}")
+    print("written:", meta["html_file"])
+    return 0
+
+
+def opts_space_from_url(url):
+    m = re.search(r"/bin/(?:view/)?(Service-Management/[^/]+/[^/]+/[^/]+|[^/]+/[^/]+/[^/]+)", url)
+    return m.group(1) if m else DEFAULT_SPACE_PATH
+
+
 if __name__ == "__main__":
     opts = parse_args()
+    if opts.smoke_page:
+        sys.exit(smoke(opts.smoke_page))
     try:
         s = run(opts)
     except Exception as exc:
