@@ -19,6 +19,10 @@ BASE = os.environ["BASE"]; S = os.environ["S"]; SD = os.environ["SD"]; SEC = os.
 S2 = requests.Session()
 S2.headers["User-Agent"] = "Mozilla/5.0 (X11; Linux x86_64) probe"
 
+def hdr(t):
+    print(f"\n## {t}")
+
+
 def probe(label, url, note=""):
     try:
         r = S2.get(url, timeout=90)
