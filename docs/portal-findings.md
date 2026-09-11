@@ -62,3 +62,26 @@ URL → in-document-destination map built during assembly, which is what
   downloads page is gated).
 - `Agentic-AI-capabilities-in-BMC-Helix-ITSM/WebHome` returned **500** for the FOP export,
   so even per-page vendor export is not reliable across the space.
+
+
+## Anonymous listing APIs: measured 2026-09-11 by `probe-endpoints`
+
+Every shape below was requested from a GitHub-hosted runner (the sandbox has no
+egress to the host, so all measurements are from CI, committed on `docs-probe`):
+
+| Endpoint tried | Result |
+|---|---|
+| `/bin/get/<space>/WebHome?outputSyntax=plain&sheet=XWiki.ExportDocumentTree&root=...` | 404 (427-byte Tomcat error page) |
+| same on `/bin/get/<space>/WebHome/`, `sheet=XWiki.PageTree`, `tree=1`, `xpage=rdf` | 404 |
+| `/bin/get/XWiki/BMC/CETS/Macros/Navigation/BmcDocumentTree?limit=50&root=document%3A<space>.WebHome&outputSyntax=plain` — the URL the site writes into `data-url` on the live page | 404 plain, 404 with `X-Requested-With: XMLHttpRequest` + `Referer`, 404 with `limit=5000`, 404 without `exclusions` |
+| `/query/rest/*` (getChildren, getLastModified, searchDocs), `/rest/suggest` | 404 |
+| `/bin/search/main/?outputSyntax=plain` | 404 |
+| `?xpage=livetable` | 200, empty body |
+| `?xpage=print`, `&printSubpages=true`, `&includeAllChildren=true`, `?print=1` | 200 but exactly one page (97-120 KB, `contentTitle` count = 1) |
+| `/bin/pdf/<space>/<section>/WebHome?includeAllChildren=true&printSubpages=true` | 200, 43 KB, image-free, still one page |
+| `/bin/get/<space>/<section>/WebHome?outputSyntax=plain&includeAllChildren=true` | 200, 2.9 KB (the section page alone) |
+
+Conclusion: no bulk or structured listing is available anonymously, so the
+pipeline rebuilds the menu from the navigation markup each page already carries
+(`nav_inventory`) and proves completeness by link closure. Pages are fetched
+once and reused from cache by the fetch phase.

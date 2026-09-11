@@ -14,7 +14,8 @@ with internet access and publishes the result.
 
 | Finding | Evidence |
 |---|---|
-| The portal is XWiki 16.10.11; page tree is served lazily by `XWiki.ExportDocumentTree` / BMC's `BmcDocumentTree` | scraped from live HTML ([docs/portal-findings.md](docs/portal-findings.md)) |
+| The portal is XWiki 16.10.11 and its navigation is rendered **into each page** — but every machine-readable listing is closed to anonymous users | `probe-endpoints` run: `/bin/get/*` returns 404 for all 40 shapes tried, **including the URL the site itself puts in `data-url`**; `sitemap.xml`, `?xpage=rdf`, `/query/rest/*` → 404 ([docs/portal-findings.md](docs/portal-findings.md)) |
+| The authoritative menu is therefore the `<ul>` tree inside each page's `#left-navigation` — nesting gives parent/child, DOM order gives menu order | `helixdocs/tree.py:nav_inventory`, asserted by `scripts/integration_test.py` ("nesting comes from the nav `<ul>` hierarchy", "top-level sections keep menu order") |
 | `?xpage=pdf` and the Export→PDF dialog export **one page only** (`includeAllChildren` is ignored) | probed: identical 26 022-byte PDF for all 6 parameter sets |
 | That server-side export is Apache FOP and **drops every image** (`imgs=0` on pages that are mostly screenshots) | `scripts/pdfstat.py` on the fetched PDFs |
 | The ready-made "complete documentation" PDFs live on *Videos and downloadable resources*, which **requires a BMC login** (`You must log in or register to view this page`), and the attachments endpoint 404s anonymously | `…/itsm263/PDFs-and-videos/` → 200 but gated; `/bin/attachments/…` → 404 |
@@ -28,11 +29,14 @@ Because of that, the build does not "print the website". It rebuilds it.
 inventory → fetch → render → assemble → verify
 ```
 
-1. **inventory** — walks the portal's own document-tree API to exhaustion (the same
-   endpoint the site's *Export ▸ PDF* dialog uses to decide what belongs to a
-   space), then adds every extra page found by following links, so pages missing
-   from the menu are still captured. `tree-probe.json` records which endpoint
-   shape was used, `inventory.json` is the audit list.
+1. **inventory** — breadth-first over the space. For every page it reads the
+   rendered left navigation (parent/child from `<ul>` nesting, menu order from DOM
+   order, real titles) **and** every other in-space link the page contains, so
+   pages hidden from the menu are still captured. Each page is fetched exactly once
+   and stays in `http-cache/`, which is why phase 2 needs almost no network.
+   `--prefer-tree-api` additionally cross-checks against the portal's own tree
+   endpoint when one is reachable. `inventory.json` is the audit list,
+   `tree-probe.json` the diagnostics.
 2. **fetch** — downloads the rendered HTML of every page (polite, cached,
    resumable), then cleans it: strips site chrome, and **expands everything the
    site hides** — tab panes, collapsed/accordion blocks, `style="display:none"`,
@@ -95,8 +99,11 @@ sudo apt-get update && sudo apt-get install -y \
 
 ./scripts/bootstrap.sh                      # venv + python deps + self-test
 
-# quick look first (one menu section), then the whole space:
-make pdf SECTIONS=Getting-started WORK=/tmp/helix-test
+# prove the pipeline works on your machine before touching the portal (localhost mock):
+make e2e-mock
+
+# quick look first (one menu section, 15 pages), then the whole space:
+make pdf SECTIONS=Getting-started MAX_DOCS=15 WORK=/tmp/helix-test
 make pdf WORK=/tmp/helix
 
 # equivalently, without make:
@@ -113,6 +120,49 @@ the PDF, and that no documentation link still points at the website).
 `/tmp/helix/attachments/` holds every referenced attachment (zip/pdf/xlsx) with the
 `attachments.json` sha256 manifest; `/tmp/helix/page-map.json` maps each topic to its
 PDF page range.
+
+Verify the two things you asked for - everything present, and no menu link escaping to the website:
+
+```bash
+.venv/bin/python - <<'PYCHK'
+import sys
+from pypdf import PdfReader
+r = PdfReader(sys.argv[1] if len(sys.argv) > 1
+              else "BMC-Helix-ITSM-26.3-complete.pdf")
+
+
+def flat(o):
+    for it in o:
+        if isinstance(it, list):
+            yield from flat(it)
+        elif hasattr(it, "get_object"):
+            yield it.get_object()
+
+
+uri_portal = uri_other = jumps = 0
+for pg in r.pages:
+    for a in (pg.get("/Annots") or []):
+        o = a.get_object()
+        act = o.get("/A")
+        uri = (act.get("/URI") if act is not None else None) or o.get("/URI")
+        if uri:
+            u = str(uri)
+            if "docs.helixops.ai" in u or "/bin/Service-Management/" in u:
+                uri_portal += 1
+            else:
+                uri_other += 1
+        if o.get("/Dest") or (act is not None and act.get("/S") == "/GoTo"):
+            jumps += 1
+print("pages:            ", len(r.pages))
+print("menu bookmarks:   ", sum(1 for x in flat(r.outline) if "/Title" in x))
+print("in-document jumps:", jumps, "(every documentation link)")
+print("links to website:", uri_portal, " <- must be 0")
+print("other external links (kept on purpose):", uri_other)
+PYCHK
+```
+
+The same assertions run inside the build and are written to `/tmp/helix/coverage.md`,
+which is the file to read if a number above is not what you expect.
 
 Requirements: Python 3.10+, network access to `docs.helixops.ai`, `pango/cairo`.
 Phases are cached in `--workspace`, so a re-run only rebuilds what changed, and an

@@ -32,6 +32,7 @@ SITE = {
     "Getting-started.Page-a": ("Page A", ["Getting-started.Page-a.Sub"]),
     "Getting-started.Page-a.Sub": ("Page A sub", []),
     "Getting-started.Page-b": ("Page B (not in menu)", []),
+    "Getting-started.Page-b.Deep": ("Deep page, menu-hidden, nested by name", []),
     "Getting-started.Old": ("Old name", []),
     "Administering": ("Administering", ["Administering.Deep-thing"]),
     "Administering.Deep-thing": ("Deep thing", []),
@@ -57,6 +58,24 @@ def rel_of(doc):
     return doc.replace(".", "/")
 
 
+def nav_html(current=""):
+    """Left navigation as the portal renders it: a nested ul/li tree, in menu order,
+    with the real titles. Pages hidden from the menu are absent here by design."""
+
+    def render(keys):
+        out = []
+        for k in keys:
+            title, kids = SITE[k][0], SITE[k][1]
+            sub = render(kids) if kids else ""
+            mark = ' class="active"' if k == current else ""
+            out.append(f'<li{mark} data-reference="{SPACE_DOT}.{k}">'
+                       f'<a href="/bin/{SPACE_PATH}/{rel_of(k)}/">{title}</a>{sub}</li>')
+        return "<ul>" + "".join(out) + "</ul>"
+
+    return (f'<div id="left-navigation" class="helix-nav">'
+            f'{render(SITE["WebHome"][1])}</div>')
+
+
 def page_html(doc):
     title, kids = SITE[doc][0], SITE[doc][1]
     slug = doc or "root"
@@ -66,6 +85,7 @@ def page_html(doc):
     if doc == "Getting-started.Page-a":
         extra = ('<p>Linked but hidden from the menu: '
                  '<a href="/bin/Demo/Space/Getting-started/Page-b/">page b</a>, '
+                 '<a href="/bin/Demo/Space/Getting-started/Page-b/Deep/">deep page b</a>, '
                  'legacy relative link: <a href="Old/">old name</a> and '
                  '<a href="/bin/Demo/Space/Administering.Deep-thing/">dotted link</a></p>'
                  '<p>Attachment: <a href="/bin/download/Demo.Space.Getting-started.Page-a/notes.pdf?rev=1.1">'
@@ -87,6 +107,7 @@ def page_html(doc):
            f'<figcaption>Figure for {slug}</figcaption></figure>')
     body = (f'<html><head><title>{title}</title></head><body>'
             f'<nav class="xwikiDocumentTree">NAVJUNK-{slug}</nav>'
+            f'{nav_html(doc)}'
             f'<h1 id="contentTitle">{title}</h1>'
             f'<div id="xwikicontent">'
             f'<p>INTRO-{slug} line one.</p>'

@@ -38,7 +38,8 @@ from helixdocs.config import (DEFAULT_PRODUCT, DEFAULT_SPACE_PATH,        # noqa
 from helixdocs.net import Http                                            # noqa: E402
 from helixdocs.page import PageBuilder, fetch_pages                       # noqa: E402
 from helixdocs.render import render_all                                   # noqa: E402
-from helixdocs.tree import Inventory, bfs_inventory, build_inventory       # noqa: E402
+from helixdocs.tree import (Inventory, bfs_inventory, build_inventory,      # noqa: E402
+                            nav_inventory)
 from helixdocs.verify import (audit_links, check_content, make_samples,   # noqa: E402
                               write_reports)
 
@@ -67,6 +68,10 @@ def parse_args(argv=None):
     ap.add_argument("--http-workers", type=int, default=8)
     ap.add_argument("--delay", type=float, default=0.08, help="seconds between requests")
     ap.add_argument("--tree-limit", type=int, default=500)
+    ap.add_argument("--nav-batch", type=int, default=60,
+                    help="pages fetched per enumeration round (bounds memory)")
+    ap.add_argument("--prefer-tree-api", action="store_true",
+                    help="cross-check the menu with the portal's own tree API")
     ap.add_argument("--only-sections", default="", help="comma list of top-level sections")
     ap.add_argument("--max-docs", type=int, default=0, help="cap (for test builds)")
     ap.add_argument("--max-pages", type=int, default=0,
@@ -130,22 +135,36 @@ def run(opts):
             inv = Inventory.load(opts.inventory)
             log(f"inventory loaded from {opts.inventory}: {len(inv.nodes)} pages")
         else:
-            log("enumerating the space with the portal's document-tree API ...")
-            diag = os.path.join(ws, "tree-probe.json")
-            try:
-                inv = build_inventory(http, opts.space_path, limit=opts.tree_limit,
-                                      time_budget=opts.time_budget or None,
-                                      diag_path=diag,
-                                      only=opts.only_sections.split(",") or None)
-            except Exception as exc:
-                log(f"document-tree API unavailable ({exc}); "
-                    "falling back to link-closure enumeration")
-                inv = bfs_inventory(http, opts.space_path,
-                                    time_budget=opts.time_budget or None)
-                if os.path.exists(diag):
-                    d = json.load(open(diag))
-                    d["fallback"] = str(exc)[:300]
-                    json.dump(d, open(diag, "w"), indent=1)
+            log("enumerating the space: every page, following the portal's own "
+                "rendered navigation and all in-space links (link closure) ...")
+            only = [x for x in (opts.only_sections or "").split(",") if x.strip()]
+            inv = nav_inventory(http, opts.space_path,
+                                max_pages=opts.max_docs or 20000,
+                                time_budget=opts.time_budget or None,
+                                verbose=True, only=only or None,
+                                batch=opts.nav_batch)
+            if opts.prefer_tree_api:      # optional cross-check against the site API
+                diag = os.path.join(ws, "tree-probe.json")
+                try:
+                    t_inv = build_inventory(http, opts.space_path, limit=opts.tree_limit,
+                                            time_budget=opts.time_budget or None,
+                                            diag_path=diag, only=only or None)
+                    extra = [d for d in t_inv.nodes if d not in inv.nodes]
+                    for d in extra:
+                        t = t_inv.nodes[d]
+                        inv.add(d, t["title"], parent=t["parent"], depth=t["depth"])
+                    if extra:
+                        log(f"tree API contributed {len(extra)} pages the crawl missed")
+                    inv.method += "+tree-api"
+                except Exception as exc:
+                    log(f"tree API cross-check unavailable: {exc}")
+            def _ord(c, _inv=inv):
+                v = _inv.nodes.get(c, {}).get("nav_order")
+                return (v if isinstance(v, int) else 10 ** 9,
+                        _inv.nodes.get(c, {}).get("title", "").lower())
+
+            for n in inv.nodes.values():  # menu order decides the final sequence
+                n["children"] = sorted(dict.fromkeys(n.get("children") or []), key=_ord)
             inv.save(inv_path)
         log(f"inventory: {json.dumps(inv.stats())}")
     else:

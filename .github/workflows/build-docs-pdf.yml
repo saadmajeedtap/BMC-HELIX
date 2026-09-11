@@ -22,34 +22,28 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - name: read config
-        id: cfg
         run: |
           python3 - <<'PY' >> "$GITHUB_ENV"
-          import json, shlex
+          import json
+          ALIAS = {"no_attachments": "NO_ATTACH", "space_path": "SPACE_PATH",
+                   "only_sections": "ONLY_SECTIONS", "max_docs": "MAX_DOCS",
+                   "http_workers": "HTTP_WORKERS", "no_stamp": "NO_STAMP",
+                   "commit_pdf": "COMMIT_PDF", "publish_release": "PUBLISH_RELEASE",
+                   "nav_batch": "NAV_BATCH", "time_budget": "TIME_BUDGET",
+                   "phase_timeout": "PHASE_TIMEOUT"}
           c = json.load(open(".build-config.json"))
+          print("WORKDIR=/tmp/helix-build")
           for k, v in c.items():
               if isinstance(v, bool):
-                  v = "1" if v else ""
-              print(f"ENV_{k.upper()}={v}")
+                  v = "1" if v else "0"
+              name = ALIAS.get(k, k.upper().replace("-", "_"))
+              if name and not name.startswith("NOTE"):
+                  print(f"{name}={v}")
           PY
           cat .build-config.json
       - name: build
         run: bash scripts/ci_build.sh
         env:
-          SPACE_PATH: ${{ env.ENV_SPACE_PATH }}
-          PRODUCT: ${{ env.ENV_PRODUCT }}
-          VERSION: ${{ env.ENV_VERSION }}
-          PHASES: ${{ env.ENV_PHASES }}
-          ONLY_SECTIONS: ${{ env.ENV_ONLY_SECTIONS }}
-          MAX_DOCS: ${{ env.ENV_MAX_DOCS }}
-          ENGINE: ${{ env.ENV_ENGINE }}
-          WORKERS: ${{ env.ENV_WORKERS }}
-          HTTP_WORKERS: ${{ env.ENV_HTTP_WORKERS }}
-          DELAY: ${{ env.ENV_DELAY }}
-          NO_ATTACH: ${{ env.ENV_NO_ATTACHMENTS }}
-          NO_STAMP: ${{ env.ENV_NO_STAMP }}
-          COMMIT_PDF: ${{ env.ENV_COMMIT_PDF }}
-          PUBLISH_RELEASE: ${{ env.ENV_PUBLISH_RELEASE }}
           GH_TOKEN: ${{ github.token }}
       - name: comment
         if: always()

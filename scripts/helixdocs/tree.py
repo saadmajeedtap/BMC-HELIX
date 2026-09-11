@@ -458,3 +458,187 @@ def bfs_inventory(http, space_path, seeds=None, max_pages=20000, time_budget=Non
     for d in list(inv.nodes):
         inv.nodes[d].pop("_seen", None)
     return inv
+
+
+# ------------------------------------------------------------------ navigation
+# The portal exposes no usable anonymous listing API (every /bin/get/* form, and
+# even the URL its own markup advertises, returns 404). What *is* authoritative is
+# the navigation the page renders: the left tree shows the ancestors of the page
+# plus their children, in menu order, with the real titles. Harvesting it from
+# every page gives the complete menu tree -- and a page can only be in the menu
+# of one of its ancestors, so the whole tree is covered by crawling all pages.
+NAVISH = re.compile(r"(doc|main|left|side|global|page)?-?(nav|tree|toc|menu|contents?|sidebar)",
+                    re.I)
+
+
+def _doc_of(href, space_path, space_dot):
+    return url_to_doc(href, space_path, space_dot)
+
+
+def nav_container(soup, space_path):
+    """The <ul> that carries the in-space navigation (the one with most in-space links)."""
+    cands = list(soup.find_all("ul"))
+    scored = []
+    for ul in cands[:400]:
+        chain = " ".join([(p.get("id") or "") + " " + " ".join(p.get("class") or [])
+                          for p in list(ul.parents)[:4]])
+        n = 0
+        for a in ul.find_all("a", href=True):
+            if space_path in a["href"]:
+                n += 1
+                if n > 200:
+                    break
+        if n:
+            scored.append((n, 1 if NAVISH.search(chain or "") else 0, len(ul.get_text()), ul))
+    if not scored:
+        return None
+    scored.sort(key=lambda t: (t[1], t[0]), reverse=True)
+    return scored[0][3]
+
+
+def nav_edges(soup, space_path, space_dot):
+    """[(doc, parent, title, order)] from the nested <ul>/<li> structure."""
+    root = nav_container(soup, space_path)
+    if root is None:
+        return []
+    edges, ctr = [], [0]
+
+    def walk(node, parent):
+        for li in node.find_all("li", recursive=False):
+            a = li.find("a", href=True)
+            sub = li.find("ul", recursive=False)
+            doc = _doc_of(a["href"], space_path, space_dot) if a is not None else None
+            title = re.sub(r"\s+", " ", a.get_text(" ", strip=True)) if a is not None else ""
+            if doc:
+                ctr[0] += 1
+                edges.append((doc, parent, title, ctr[0]))
+            if sub is not None:
+                walk(sub, doc or parent)
+    walk(root, None)
+    return edges
+
+
+def nav_inventory(http, space_path, max_pages=20000, time_budget=None, verbose=True,
+                  only=None, batch=48):
+    """Breadth-first over pages, taking structure from the rendered nav and
+    completeness from every in-space link each page contains."""
+    inv = Inventory(space_path, "rendered-navigation")
+    sp, sd = inv.space_path, inv.space_dot
+    wanted = {str(w).strip().lower().replace(" ", "-") for w in (only or []) if str(w).strip()}
+    t0 = time.time()
+    inv.add(sd, "Home", parent=None, depth=1, closed=False)
+    inv.nodes[sd]["is_space_root"] = True
+    visited, queue = set(), [sd]
+    rounds = 0
+    while queue and len(inv.nodes) < max_pages:
+        rounds += 1
+        if time_budget and time.time() - t0 > time_budget:
+            inv.notes = [f"time budget hit, {len(queue)} pages still queued"]
+            break
+        todo = [d for d in dict.fromkeys(queue) if d not in visited and d in inv.nodes]
+        if not todo:
+            break
+        # bounded rounds: keeps memory flat on a multi-thousand page space
+        todo = todo[:max(8, batch)]
+        urls = {d: inv.nodes[d]["url"] for d in todo}
+        res = http.get_many(list(urls.values()))
+        nxt = []
+        for d, u in urls.items():
+            visited.add(d)
+            r = res.get(u)
+            if r is None or r[0] != 200:
+                inv.expand_failures.append(d)
+                continue
+            html = r[1]
+            soup = BeautifulSoup(html, "lxml")
+            # 1) structure: the menu this page renders
+            for (cd, parent, title, order) in nav_edges(soup, sp, sd):
+                if cd == d or is_denied(cd):
+                    continue
+                pd = parent if parent in inv.nodes else sd
+                n = inv.add(cd, title or cd.rsplit(".", 1)[-1].replace("-", " "),
+                             parent=pd, depth=inv.nodes[pd]["depth"] + 1, closed=False)
+                if n is None:
+                    continue
+                n["nav_order"] = order
+                if n.get("src") != "nav":
+                    n["src"] = "nav"
+                if cd not in inv.nodes[pd]["children"]:
+                    inv.nodes[pd]["children"].append(cd)
+                if wanted and pd == sd and not _section_matches(cd, title, wanted):
+                    n["out_of_scope"] = True
+                    if cd not in inv.denied:
+                        inv.denied.append(cd)
+                    continue
+                if cd not in visited:
+                    nxt.append(cd)
+            # 2) completeness: anything else this page links to inside the space
+            for href in re.findall(r'href="([^"]+' + re.escape(sp) + r'[^"]*)"', html):
+                cd = _doc_of(href, sp, sd)
+                if not cd or cd in visited or cd in inv.nodes:
+                    continue
+                a_txt = ""
+                m = re.search(r'<a\b[^>]*href="' + re.escape(href) + r'"[^>]*>(.*?)</a>',
+                              html, re.S)
+                if m:
+                    a_txt = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", m.group(1))).strip()
+                n = inv.add(cd, a_txt or cd.rsplit(".", 1)[-1].replace("-", " "),
+                             parent=d, depth=inv.nodes[d]["depth"] + 1, closed=False)
+                if n is None or n.get("out_of_scope"):
+                    continue
+                if n.get("src") is None:
+                    n["src"] = "link"
+                if cd not in inv.nodes[d]["children"]:
+                    inv.nodes[d]["children"].append(cd)
+                nxt.append(cd)
+        queue = [x for x in dict.fromkeys(nxt) if x not in visited
+                 and not inv.nodes.get(x, {}).get("out_of_scope")]
+        if verbose:
+            st = inv.stats()
+            print(f"[nav] round {rounds}: visited={len(visited)} pages={st['pages']} "
+                  f"queued={len(queue)} t={time.time()-t0:.0f}s", flush=True)
+    # menu order wins; link-discovered children keep discovery order afterwards
+    for n in inv.nodes.values():
+        n["children"] = sorted(dict.fromkeys(n["children"]),
+                               key=lambda c: (inv.nodes[c].get("nav_order") is None,
+                                              inv.nodes[c].get("nav_order") or 0,
+                                              inv.nodes[c]["title"].lower()))
+    # Belt and braces: BMC names documents by their menu path
+    # (``Administering.Configuring-logs`` is a child of ``Administering``), so a page
+    # that the nav never showed us can still be hung on the right branch instead of
+    # being flattened under whatever page happened to link to it first.
+    for d, n in inv.nodes.items():
+        if n.get("src") == "nav" or d == sd:
+            continue
+        parts = d.split(".")
+        cand = None
+        for i in range(len(parts) - 1, 1, -1):
+            probe = ".".join(parts[:i])
+            if probe in inv.nodes and probe != d:
+                cand = probe
+                break
+        if cand and cand != n.get("parent"):
+            old = n.get("parent")
+            if old and old in inv.nodes and d in inv.nodes[old]["children"]:
+                inv.nodes[old]["children"].remove(d)   # detach from the linking page
+            n["parent"] = cand
+            n["src"] = n.get("src") or "prefix"
+            n["reparented_by_name"] = True
+            if d not in inv.nodes[cand]["children"]:
+                inv.nodes[cand]["children"].append(d)
+    for d, n in inv.nodes.items():   # drop stale edges left by the re-parenting above
+        n["children"] = [c for c in dict.fromkeys(n.get("children") or [])
+                         if c in inv.nodes and c != d and inv.nodes[c].get("parent") == d]
+    for d, n in inv.nodes.items():   # depths follow the final parent chain
+        depth, cur, seen = 0, n.get("parent"), set()
+        while cur and cur in inv.nodes and cur not in seen:
+            seen.add(cur); depth += 1; cur = inv.nodes[cur].get("parent")
+        n["depth"] = depth + 1
+    for n in inv.nodes.values():
+        n["children"] = sorted(n["children"], key=lambda c: (
+            inv.nodes[c].get("nav_order") if isinstance(inv.nodes[c].get("nav_order"), int)
+            else 10 ** 9, inv.nodes[c]["title"].lower()))
+
+    nav_pages = sum(1 for n in inv.nodes.values() if n.get("src") == "nav")
+    inv.stats_extra = {"visited": len(visited), "nav_sourced": nav_pages}
+    return inv

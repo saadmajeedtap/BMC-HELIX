@@ -3,15 +3,18 @@
   "product": "BMC Helix ITSM",
   "version": "26.3",
   "phases": "inventory,fetch,render,assemble,verify",
-  "only_sections": "Release-notes-and-notices,Getting-started",
-  "max_docs": "0",
+  "only_sections": "Getting-started",
+  "max_docs": "12",
   "engine": "weasyprint",
   "workers": "3",
   "http_workers": "8",
   "delay": "0.08",
+  "nav_batch": "60",
+  "phase_timeout": "600",
+  "time_budget": "0",
   "no_attachments": false,
   "no_stamp": false,
   "commit_pdf": true,
   "publish_release": false,
-  "note": "validation run: 2 sections + attachments, scoped enumeration"
+  "note": "validation run: 1 section, 12-page cap, attachments mirrored"
 }

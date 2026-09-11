@@ -87,8 +87,21 @@ def main():
         want = {f"{SPACE_DOT}.{k}" for k in SITE if k != "_inclusionsLibrary.Stuff"}
         want.discard(f"{SPACE_DOT}.WebHome")
         got = set(nodes)
-        ck(inv["method"] == "export-tree", "tree endpoint discovered and used",
-           inv["method"])
+        ck(inv["method"].startswith("rendered-navigation"),
+        "menu tree rebuilt from the rendered navigation", inv["method"])
+        nav = {k: v for k, v in nodes.items()}
+        ck(nav[f"{SPACE_DOT}.Getting-started"]["nav_order"] <
+        nav[f"{SPACE_DOT}.Administering"]["nav_order"],
+        "top-level sections keep menu order",
+        f'{nav[f"{SPACE_DOT}.Getting-started"]["nav_order"]} < '
+        f'{nav[f"{SPACE_DOT}.Administering"]["nav_order"]}')
+        ck(nav[f"{SPACE_DOT}.Getting-started.Page-a.Sub"]["parent"]
+        == f"{SPACE_DOT}.Getting-started.Page-a",
+        "nesting comes from the nav <ul> hierarchy, not from URL guessing",
+        nav[f"{SPACE_DOT}.Getting-started.Page-a.Sub"]["parent"])
+        ck(sum(1 for v in nodes.values() if v.get("src") == "nav") >= 5,
+        "most pages sourced from the menu itself",
+        str(sum(1 for v in nodes.values() if v.get("src") == "nav")))
         top = {d.rsplit(".", 1)[-1] for d in order
                if nodes[d]["depth"] <= 2 and not nodes[d].get("is_space_root")}
         ck({"Getting-started", "Administering"} <= top, "top-level menu sections found",
@@ -97,6 +110,18 @@ def main():
            f"{len(got)} nodes")
         ck(f"{SPACE_DOT}.Getting-started.Page-b" in got,
            "page absent from the menu captured by link closure")
+        ck(f"{SPACE_DOT}.Getting-started.Page-b.Deep" in got,
+           "page two levels deep, invisible to the menu, still captured")
+        ck(nodes[f"{SPACE_DOT}.Getting-started.Page-b.Deep"]["parent"]
+           == f"{SPACE_DOT}.Getting-started.Page-b",
+           "menu-less branch rebuilt from the document naming scheme",
+           nodes[f"{SPACE_DOT}.Getting-started.Page-b.Deep"]["parent"])
+        ck(nodes[f"{SPACE_DOT}.Getting-started.Page-b"].get("reparented_by_name"),
+           "a page linked from elsewhere is moved under its real menu parent",
+           nodes[f"{SPACE_DOT}.Getting-started.Page-b"]["parent"])
+        ck(nodes[f"{SPACE_DOT}.Getting-started.Page-b.Deep"]["depth"] == 4,
+           "depths recomputed after re-parenting",
+           str(nodes[f"{SPACE_DOT}.Getting-started.Page-b.Deep"]["depth"]))
         ck(f"{SPACE_DOT}._inclusionsLibrary.Stuff" not in got,
            "authoring include-library filtered out")
         ck(f"{SPACE_DOT}._inclusionsLibrary.Stuff" in inv["denied"],
