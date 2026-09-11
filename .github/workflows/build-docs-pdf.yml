@@ -8,9 +8,6 @@ on:
     paths:
       - .build-config.json
 
-concurrency:
-  group: docs-pdf-build
-  cancel-in-progress: false
 
 permissions:
   contents: write

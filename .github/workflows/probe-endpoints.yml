@@ -1,0 +1,46 @@
+name: probe-endpoints
+# One-shot recon: which endpoint can enumerate a space (or dump a whole section),
+# and does a multi-page print view exist? Results are committed to docs-probe.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/probe_endpoints.sh
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q requests beautifulsoup4 lxml
+      - name: probe
+        run: |
+          bash scripts/probe_endpoints.sh > /tmp/out.md 2>&1 || true
+          mkdir -p probe && cp /tmp/out.md probe/endpoints.md
+      - name: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B docs-probe
+          mkdir -p probe && cp /tmp/out.md probe/endpoints.md
+          git add -f probe/endpoints.md
+          git commit -qm "probe: enumeration endpoint matrix" || true
+          git push -f origin HEAD:docs-probe || true
+      - name: comment
+        if: always()
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          python3 - <<'PY'
+          import os, subprocess
+          body = open('/tmp/out.md').read()[:55000]
+          subprocess.run(["gh","api","--method","POST",
+                          f"repos/{os.environ['GITHUB_REPOSITORY']}/issues/1/comments",
+                          "-f", f"body={body}"], check=False)
+          PY
