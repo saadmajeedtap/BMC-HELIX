@@ -12,5 +12,6 @@
   "no_attachments": false,
   "no_stamp": false,
   "commit_pdf": true,
-  "publish_release": false
+  "publish_release": false,
+  "note": "validation run: 2 sections + attachments, scoped enumeration"
 }
