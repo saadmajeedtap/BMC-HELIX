@@ -1,0 +1,45 @@
+name: probe-docs-site
+# Read-only reconnaissance of the BMC Helix docs portal so the PDF builder
+# can pick the best available retrieval strategy. Posts its report as a comment
+# on issue #1 and commits probe/probe-report.md to branch docs-probe.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/probe-docs-site.yml
+      - scripts/probe_docs_site.sh
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run probe
+        run: bash scripts/probe_docs_site.sh | tee /tmp/probe-report.md
+      - name: Comment on issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json,os,subprocess
+          body = open('/tmp/probe-report.md').read()
+          body = body[:60000]
+          subprocess.run(["gh","api","--method","POST",
+                          f"repos/{os.environ['GITHUB_REPOSITORY']}/issues/1/comments",
+                          "-f", f"body={body}"], check=False)
+          PY
+      - name: Commit report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B docs-probe
+          mkdir -p probe
+          cp /tmp/probe-report.md probe/probe-report.md
+          git add -f probe/probe-report.md
+          git commit -m "probe: docs.helixops.ai capability report" || true
+          git push -f origin docs-probe
