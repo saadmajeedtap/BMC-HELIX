@@ -1,0 +1,95 @@
+name: build-docs-pdf
+# Build one complete, self-linked PDF of a BMC Helix documentation space.
+# Everything lands on the `docs-build` branch (reports, page map, excerpt, and the
+# PDF itself when it fits); optionally a GitHub Release holds the full file.
+on:
+  workflow_dispatch:
+    inputs:
+      space_path:
+        description: "documentation space path"
+        required: true
+        default: "Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263"
+      product:
+        description: "product name used in the title"
+        required: true
+        default: "BMC Helix ITSM"
+      version:
+        description: "documentation version"
+        required: true
+        default: "26.3"
+      phases:
+        description: "phases to run"
+        required: false
+        default: "inventory,fetch,render,assemble,verify"
+      only_sections:
+        description: "limit to top-level sections (comma separated, empty = whole space)"
+        required: false
+        default: ""
+      max_docs:
+        description: "cap number of pages (0 = no cap)"
+        required: false
+        default: "0"
+      engine:
+        description: "render engine"
+        required: false
+        default: "weasyprint"
+        type: choice
+        options: [weasyprint, chromium]
+      workers:
+        description: "render processes"
+        required: false
+        default: "3"
+      no_attach:
+        description: "skip mirroring non-image attachments"
+        type: boolean
+        required: false
+        default: false
+      publish_release:
+        description: "upload the PDF to a GitHub Release"
+        type: boolean
+        required: false
+        default: true
+
+concurrency: docs-pdf-build
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      SPACE_PATH: ${{ inputs.space_path }}
+      PRODUCT: ${{ inputs.product }}
+      VERSION: ${{ inputs.version }}
+      PHASES: ${{ inputs.phases }}
+      ONLY_SECTIONS: ${{ inputs.only_sections }}
+      MAX_DOCS: ${{ inputs.max_docs }}
+      ENGINE: ${{ inputs.engine }}
+      WORKERS: ${{ inputs.workers }}
+      NO_ATTACH: ${{ inputs.no_attach && '1' || '' }}
+      PUBLISH_RELEASE: ${{ inputs.publish_release && '1' || '0' }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: build
+        run: bash scripts/ci_build.sh
+      - name: comment
+        if: always()
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          python3 - <<'PY'
+          import os, subprocess
+          try:
+              body = open('/tmp/helix-build/report.md').read()[-55000:]
+          except Exception:
+              body = "build produced no report"
+          body = f"### build-docs-pdf run #{os.environ.get('GITHUB_RUN_NUMBER')}\n\n" + body
+          subprocess.run(["gh", "api", "--method", "POST",
+                          f"repos/{os.environ['GITHUB_REPOSITORY']}/issues/1/comments",
+                          "-f", f"body={body}"], check=False)
+          PY
