@@ -1,7 +1,7 @@
 state: heartbeat
-at:  2026-09-12T15:49:30Z
-load: 15:49:30 up 13 min,  0 user,  load average: 5.51, 2.59, 1.09
-mem:  1522/15989 MB
+at:  2026-09-12T15:51:11Z
+load: 15:51:11 up 14 min,  0 user,  load average: 2.99, 2.75, 1.32
+mem:  1557/15989 MB
 disk: /dev/root 145G 59G 86G 41% /
 
 ## report
@@ -55,11 +55,6 @@ phase fetch rc=0 ended 15:46:42  |  [15:46:42] attachments mirrored: 15/15 files
 --- phase: render (started 15:46:43) ---
 
 ## live build log (last 40 lines)
-[nav] round 13: visited=313 pages=440 queued=1 t=59s
-[nav] round 14: visited=314 pages=441 queued=1 t=61s
-[nav] round 15: visited=315 pages=442 queued=1 t=62s
-[nav] round 16: visited=316 pages=443 queued=1 t=63s
-[nav] round 17: visited=317 pages=444 queued=1 t=64s
 [nav] round 18: visited=318 pages=445 queued=1 t=65s
 [nav] round 19: visited=319 pages=446 queued=1 t=66s
 [nav] round 20: visited=320 pages=447 queued=1 t=68s
@@ -95,3 +90,8 @@ phase fetch rc=0 ended 15:46:42  |  [15:46:42] attachments mirrored: 15/15 files
 [render] 300/496 pages (134s, 0.4s/page)
 [render] 325/496 pages (145s, 0.4s/page)
 [render] 350/496 pages (161s, 0.5s/page)
+[render] 375/496 pages (173s, 0.5s/page)
+[render] 400/496 pages (183s, 0.5s/page)
+[render] 425/496 pages (192s, 0.5s/page)
+[render] 450/496 pages (202s, 0.4s/page)
+[render] 475/496 pages (208s, 0.4s/page)
