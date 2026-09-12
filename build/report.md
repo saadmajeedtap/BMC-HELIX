@@ -64,3 +64,128 @@ phase render rc=0 ended 15:58:53  |  [15:58:29] trying a CSS-flattened copy of 1
 phase assemble rc=0 ended 15:59:07  |  [assemble] pages=1918 docs=496 internalized=3281 external_left=1603 out=/tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf t=12s [15:59:07] PDF written: /tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf (148.3 MB, 1918 pages) [15:59:07] DONE in 13s 
 --- phase: verify (started 15:59:08) ---
 phase verify rc=0 ended 16:00:02  |  [16:00:02] coverage: {"inventory_pages": 496, "fetch_failures": 0, "missing_from_pdf": 0, "thin_or_empty_pages": 0, "coverage_percent": 100.0} [16:00:02] DONE in 54s NOTE: 1 page(s) needed a fallback layout (their text, tables and links are complete; styling was simplified) - each one is named with a structural profile in coverage.md 
+
+## live log tail
+```
+Annotation sizes differ: 1 vs. 0
+Annotation sizes differ: 1 vs. 0
+Annotation sizes differ: 5 vs. 0
+Annotation sizes differ: 1 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 4 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+[assemble] stamped 1909 content pages
+[assemble] pages=1918 docs=496 internalized=3281 external_left=1603 out=/tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf t=12s
+[15:59:07] PDF written: /tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf (148.3 MB, 1918 pages)
+[15:59:07] DONE in 13s
+=== phase verify ===
+[15:59:09] pages to build: 496 (order=496)
+[16:00:02] sample page images: 10
+[16:00:02] coverage: {"inventory_pages": 496, "fetch_failures": 0, "missing_from_pdf": 0, "thin_or_empty_pages": 0, "coverage_percent": 100.0}
+[16:00:02] DONE in 54s
+NOTE: 1 page(s) needed a fallback layout (their text, tables and links are complete; styling was simplified) - each one is named with a structural profile in coverage.md
+```
+
+## results
+```
+{
+ "pdf": "BMC-Helix-ITSM-26.3-complete.pdf",
+ "pdf_bytes": 148268898,
+ "inventory_pages": 496,
+ "docs_in_pdf": 496,
+ "pdf_pages": 1918,
+ "rendered_ok": 496,
+ "rendered_degraded": 1,
+ "redirect_pages": 0,
+ "fetch_failures": 0,
+ "filtered_authoring_artifacts": 0,
+ "missing_from_pdf": 0,
+ "thin_or_empty_pages": 0,
+ "not_built_by_request": 0,
+ "coverage_base": 496,
+ "coverage_percent": 100.0,
+ "links": {
+  "internal_goto": 3969,
+  "helix_other_space_uri": 1353,
+  "external_uri": 250
+ },
+ "expand_failures": 0,
+ "build_seconds": 52.0,
+ "engine": "weasyprint",
+ "http": {
+  "requests": 0,
+  "cache_hits": 0,
+  "errors": 0,
+  "retries": 0,
+  "bytes": 0,
+  "seconds": 52.0,
+  "mb": 0.0
+ },
+ "assets_mb": 52.1,
+ "inventory": {
+  "method": "rendered-navigation",
+  "pages": 496,
+  "denied_filtered": 0,
+  "expand_failures": 0,
+  "roots": 1,
+  "depth_histogram": {
+   "1": 1,
+   "3": 153,
+   "2": 85,
+   "4": 158,
+   "5": 64,
+   "6": 17,
+   "7": 5,
+   "8": 7,
+   "9": 6
+  }
+ }
+}
+```
+missing_from_pdf: []
+fetch_failures: []
+
+```
+total 148432
+drwxr-xr-x  8 runner runner      4096 Sep 12 16:00 .
+drwxrwxrwt 17 root   root        4096 Sep 12 15:46 ..
+-rw-r--r--  1 runner runner 148268898 Sep 12 15:59 BMC-Helix-ITSM-26.3-complete.pdf
+drwxr-xr-x  2 runner runner     69632 Sep 12 15:46 assets
+drwxr-xr-x  2 runner runner      4096 Sep 12 15:46 attachments
+-rw-r--r--  1 runner runner     12225 Sep 12 15:46 attachments.json
+-rw-r--r--  1 runner runner         2 Sep 12 15:39 build-rc
+-rw-r--r--  1 runner runner      7683 Sep 12 16:00 build.log
+-rw-r--r--  1 runner runner      2752 Sep 12 15:58 cover.pdf
+-rw-r--r--  1 runner runner      1160 Sep 12 16:00 coverage.json
+-rw-r--r--  1 runner runner      5966 Sep 12 16:00 coverage.md
+drwxr-xr-x  2 runner runner    323584 Sep 12 15:46 http-cache
+-rw-r--r--  1 runner runner    653973 Sep 12 15:46 inventory.json
+-rw-r--r--  1 runner runner         2 Sep 12 16:00 last-phase-rc
+-rw-r--r--  1 runner runner    710652 Sep 12 15:46 metas.json
+-rw-r--r--  1 runner runner    187223 Sep 12 16:00 page-map.json
+drwxr-xr-x  2 runner runner    110592 Sep 12 15:58 pages
+drwxr-xr-x  2 runner runner    110592 Sep 12 15:58 pdf
+-rw-r--r--  1 runner runner    195732 Sep 12 15:58 render-index.json
+-rw-r--r--  1 runner runner      6983 Sep 12 16:00 report.md
+drwxr-xr-x  2 runner runner      4096 Sep 12 16:00 samples
+-rw-r--r--  1 runner runner   1104642 Sep 12 15:59 stamps.pdf
+-rw-r--r--  1 runner runner    116811 Sep 12 15:59 structure.json
+142M	/tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf
+760K	/tmp/helix-build/attachments
+```
+excerpt: 52642071 bytes
+samples.tgz: 1692 KB
+attachments.zip: 578 KB
+pdf bytes: 148268898
+not committed (too big for git): BMC-Helix-ITSM-26.3-complete.pdf (142M)
+committed to docs-build: attachments.zip (580K)
+not committed (too big for git): excerpt.pdf (51M)
+committed to docs-build: page-map.json (184K)

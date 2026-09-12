@@ -1,0 +1,1 @@
+excerpt.pdf: 52642071 bytes - not committed (GitHub refuses blobs over 100 MB)
