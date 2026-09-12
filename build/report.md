@@ -190,3 +190,4 @@ committed to docs-build: attachments.zip (580K)
 not committed (too big for git): excerpt.pdf (51M)
 committed to docs-build: page-map.json (184K)
 release: docs-bmc-helix-itsm-26.3-20260912-1600
+FINAL rc=0 at 2026-09-12T16:00:17Z

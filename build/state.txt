@@ -1,11 +1,11 @@
-state: released
-at:  2026-09-12T16:00:16Z
-load: 16:00:16 up 23 min,  0 user,  load average: 0.93, 1.26, 1.16
-mem:  1047/15989 MB
+state: exit rc=0
+at:  2026-09-12T16:00:17Z
+load: 16:00:17 up 24 min,  0 user,  load average: 0.93, 1.26, 1.16
+mem:  1056/15989 MB
 disk: /dev/root 145G 59G 86G 41% /
 
 ## report
-h one is named with a structural profile in coverage.md
+ofile in coverage.md
 ```
 
 ## results
@@ -104,6 +104,7 @@ committed to docs-build: attachments.zip (580K)
 not committed (too big for git): excerpt.pdf (51M)
 committed to docs-build: page-map.json (184K)
 release: docs-bmc-helix-itsm-26.3-20260912-1600
+FINAL rc=0 at 2026-09-12T16:00:17Z
 
 ## live build log (last 40 lines)
 Annotation sizes differ: 4 vs. 0
