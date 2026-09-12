@@ -372,10 +372,25 @@ class PageBuilder:
             elif not src_abs:
                 img.decompose()
             else:
-                img["src"] = src_abs
-                img["class"] = (img.get("class") or []) + ["hx-remote-img"]
+                # Anything else still has to be mirrored: a remote src would make the
+                # renderer fetch it over the network at PDF time (slow, and it can hang
+                # the whole build). Mirroring it here keeps the file self-contained.
+                furl, note = self._localize(src_abs, doc, "image")
+                if furl:
+                    img["src"] = furl
+                    meta["images"] += 1
+                else:
+                    img.decompose()
+                    meta["notes"].append(f"img-unmirrorable:{note}:{src_abs[:120]}")
+                    meta["remote_refs_dropped"] = meta.get("remote_refs_dropped", 0) + 1
         for src in root.find_all("source"):
             src.decompose()
+        # inline styles may carry background: url(...) -> same hazard
+        for el in root.find_all(style=True):
+            st = el["style"]
+            if "url(" in st:
+                el["style"] = re.sub(r"[-\w]*url\s*\([^)]*\)\s*", "none ", st)
+                meta["notes"].append("style-url-stripped")
 
         # ---- links
         for a in root.find_all("a"):

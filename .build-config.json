@@ -12,11 +12,11 @@
   "nav_batch": "60",
   "image_max_width": "1200",
   "image_quality": "72",
-  "phase_timeout": "4000",
+  "phase_timeout": "4800",
   "time_budget": "0",
   "no_attachments": false,
   "no_stamp": false,
   "commit_pdf": true,
   "publish_release": true,
-  "note": "FULL build: whole itsm263 space, attachments mirrored, published as a Release"
+  "note": "FULL build: whole itsm263 space, attachments mirrored, published as a Release (render hang fixed)"
 }

@@ -17,6 +17,22 @@ import time
 SIZE_MM = {"A4": (210, 297), "Letter": (215.9, 279.4)}
 
 
+def _local_fetcher():
+    """Only file:// and data: may be read while rendering.
+
+    The cleaned HTML is meant to be self-contained (every image and attachment was
+    mirrored during fetch), so any remote reference left behind is a bug - and far
+    worse, letting the renderer fetch it is what once hung a 496-page build for an
+    hour. Fail fast, say which page, and let the verifier report it.
+    """
+    try:
+        from weasyprint.urls import URLFetcher
+        return URLFetcher(timeout=8, allowed_protocols=("file", "data"),
+                          allow_redirects=False, fail_on_errors=False)
+    except Exception:
+        return None
+
+
 def _wp_worker(args):
     """Render one page. A per-page alarm keeps a pathological page (a 3 000-row
     table) from eating the whole phase: it fails that page, which then goes to the
@@ -35,7 +51,7 @@ def _wp_worker(args):
             armed = False                # not in a main thread -> no alarm
     try:
         from weasyprint import HTML
-        doc = HTML(filename=html_file).render()
+        doc = HTML(filename=html_file, url_fetcher=_local_fetcher()).render()
         n = len(doc.pages)
         doc.write_pdf(pdf_file)
         return slug, {"pages": n, "ok": True}
@@ -58,8 +74,10 @@ def render_weasyprint(jobs, workers=3, verbose=True, log_every=25):
     res = {}
     t0 = time.time()
     try:
+        import multiprocessing as _mp
         from concurrent.futures import ProcessPoolExecutor, as_completed
-        with ProcessPoolExecutor(max_workers=max(1, workers)) as ex:
+        ctx = _mp.get_context(os.environ.get("HELIX_RENDER_MP", "fork"))
+        with ProcessPoolExecutor(max_workers=max(1, workers), mp_context=ctx) as ex:
             futs = {ex.submit(_wp_worker, j): j[0] for j in jobs}
             try:
                 for fut in as_completed(futs):
@@ -71,6 +89,10 @@ def render_weasyprint(jobs, workers=3, verbose=True, log_every=25):
                                      f"{type(exc).__name__}: {exc}"}
                         continue
                     res[got] = r
+                    el = time.time() - t0
+                    if not r.get("ok") and verbose:
+                        print(f"[render] slow/failed {got}: {r.get('error','')[:150]}",
+                              flush=True)
                     if verbose and len(res) % log_every == 0 and len(res) < len(jobs):
                         el = time.time() - t0
                         print(f"[render] {len(res)}/{len(jobs)} pages "
