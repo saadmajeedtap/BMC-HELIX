@@ -260,9 +260,18 @@ def run(opts):
                                   fresh=opts.fresh, limit=opts.max_docs or 0,
                                   verbose=True, page_timeout=opts.page_render_timeout)
         bad = [d for d, v in render_index.items() if not v.get("ok")]
-        if bad and opts.retry_engine != "none" and not engine_available(opts.retry_engine):
-            log(f"not retrying with {opts.retry_engine}: its dependencies are not "
-                f"installed here ({len(bad)} page(s) stay unrendered)")
+        if bad and (opts.retry_engine == "none" or not engine_available(opts.retry_engine)):
+            # A page can legitimately need longer than the per-page cap (a 4 000-row
+            # table). Losing it is worse than being slow, so retry those pages one at
+            # a time with no time limit - the phase timeout is still the backstop.
+            log(f"re-rendering {len(bad)} slow page(s) serially with no page timeout ...")
+            slow = {d: metas[d] for d in bad if d in metas}
+            render_index.update(render_all(slow, ws, engine=opts.engine, workers=1,
+                                           fresh=True, page_timeout=0, verbose=True))
+            render_index = {d: v for d, v in render_index.items()}
+            bad = [d for d, v in render_index.items() if not v.get("ok")]
+            if bad:
+                log(f"{len(bad)} page(s) still unrendered; they are listed in the report")
         if bad and opts.retry_engine != "none" and opts.retry_engine != opts.engine \
                 and engine_available(opts.retry_engine):
             log(f"re-rendering {len(bad)} failed page(s) with {opts.retry_engine} ...")

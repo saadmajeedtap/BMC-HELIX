@@ -18,5 +18,5 @@
   "no_stamp": false,
   "commit_pdf": true,
   "publish_release": true,
-  "note": "FULL build: whole itsm263 space, attachments mirrored, published as a Release (render hang fixed)"
+  "note": "FULL build #2: render stragglers retried unbounded; state pushes size-guarded"
 }

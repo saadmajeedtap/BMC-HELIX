@@ -48,10 +48,18 @@ push_state() {
     echo; echo "## live build log (last 40 lines)"
     tail -40 "$W/build.log" 2>/dev/null; } > "$REPO/build/state.txt"
   cp "$W/report.md" "$REPO/build/report.md" 2>/dev/null || true
-  for f in summary.json coverage.md coverage.json inventory.json structure.json \
-           page-map.json render-index.json tree-probe.json attachments.json \
+  mkdir -p "$REPO/build"; rm -f "$REPO/build"/* 2>/dev/null
+  for f in summary.json coverage.md coverage.json inventory.md inventory.json \
+           structure.json page-map.json tree-probe.json attachments.json \
            excerpt.pdf samples.tgz attachments.zip "$(basename "$OUT_PDF")"; do
-    [ -e "$W/$f" ] && cp "$W/$f" "$REPO/build/$f" 2>/dev/null
+    [ -e "$W/$f" ] || continue
+    sz=$(stat -c%s "$W/$f" 2>/dev/null || echo 0)
+    if [ "$sz" -lt 40000000 ]; then
+      cp "$W/$f" "$REPO/build/$f" 2>/dev/null
+    else
+      echo "$f: $sz bytes - not committed (GitHub refuses blobs over 100 MB)" \
+        > "$REPO/build/$f.size.txt"
+    fi
   done
   mkdir -p /tmp/gitlock 2>/dev/null
   if mkdir /tmp/gitlock/lock 2>/dev/null; then
@@ -145,6 +153,14 @@ echo; echo "## results"; echo '```'
 [ -f "$W/summary.json" ] && python3 -c "import json;print(json.dumps(json.load(open('$W/summary.json')),indent=1)[:2400])"
 echo '```'
 [ -f "$W/coverage-report.md" ] && sed -n '1,80p' "$W/coverage-report.md"
+[ -f "$W/coverage.md" ] && sed -n '/Links that could not be resolved/,/^## First 40/p' \
+    "$W/coverage.md" | head -45
+[ -f "$W/coverage.json" ] && python3 -c "
+import json
+d = json.load(open('$W/coverage.json'))
+print('missing_from_pdf:', d.get('missing'))
+print('fetch_failures:', d.get('failed'))
+" 2>/dev/null
 echo; echo '```'; ls -la "$W" | head -24
 [ -f "$OUT_PDF" ] && du -h "$OUT_PDF"
 [ -d "$W/attachments" ] && du -sh "$W/attachments"

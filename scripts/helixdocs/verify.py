@@ -131,8 +131,12 @@ def write_reports(out_dir, inv, metas, render_index, structure, stats, samples,
     }
     if extra:
         summary.update(extra)
+    unresolved = (samples or {}).get("helix_unresolved") or []
+    targets = sorted({u.get("uri", "") for u in unresolved})[:80]
     json.dump({"summary": summary, "missing": missing[:500], "failed": failed[:200],
-               "thin": thin[:400], "denied": inv.denied[:400]},
+               "thin": thin[:400], "denied": inv.denied[:400],
+               "unresolved_links": unresolved[:200],
+               "unresolved_targets": targets},
               open(os.path.join(out_dir, "coverage.json"), "w"), indent=1)
     json.dump(content_rows, open(os.path.join(out_dir, "page-map.json"), "w"), indent=1)
 
