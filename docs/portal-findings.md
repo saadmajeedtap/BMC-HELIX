@@ -51,6 +51,20 @@ URL → in-document-destination map built during assembly, which is what
 `scripts/helixdocs/assemble.py` does, with `scripts/helixdocs/verify.py` asserting that
 `helix_inspace_uri_LEFT == 0`.
 
+A second URL form hides in the nav of gated sections:
+
+```
+https://docs.helixops.ai/bin/login/XWiki/XWikiLogin?xredirect=/bin/<space>/PDFs-and-videos/
+```
+
+Four such links survived the first full build (to `PDFs-and-videos`, `Activity-testing`,
+`Known-and-corrected-issues` and one `Use-cases` page) even though **all four pages were
+already inside the PDF** - the wrapper simply did not match the URL -> doc map, so the
+link stayed pointed at the website's login form. `config.unwrap_login_url()` now follows
+the `xredirect` wherever a URL is mapped (`url_to_doc`, cleaning, and the assembler's
+rewrite), which turns those four into in-document jumps. Gated *content* is still not
+reachable anonymously; the pipeline records it rather than inventing it.
+
 ## 5. Other notes
 
 - `/robots.txt` allows `/bin/<space>/…` reads and disallows `*/pdf/`, `*/tex/`,
@@ -85,3 +99,18 @@ Conclusion: no bulk or structured listing is available anonymously, so the
 pipeline rebuilds the menu from the navigation markup each page already carries
 (`nav_inventory`) and proves completeness by link closure. Pages are fetched
 once and reused from cache by the fetch phase.
+
+## 6. Measured result of a whole-space build (run 34695790103, 2026-09-12)
+
+| | |
+|---|---|
+| pages in PDF | 1918 (496 documents, cover + TOC included) |
+| size | 148.3 MB |
+| coverage | 100 % (0 missing, 0 fetch failures, 0 thin pages) |
+| links | 3965 in-document jumps, 1353 other-space + 250 external kept, 4 login-wrapped (fixed above) |
+| timings | inventory 71 s, fetch 345 s (1650 requests, 0 errors), render 1305 s, assemble 12 s, verify 52 s |
+
+The render time is dominated by one page: `Rebranding-BMC-Helix-ITSM-on-the-Universal-Client`
+takes >240 s *and* >900 s in WeasyPrint with its author CSS, and renders in 24 s once the CSS
+is flattened (19 pages, all text/tables/images/links kept). Its profile is what the report's
+degraded section is for.

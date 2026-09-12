@@ -18,5 +18,5 @@
  "no_stamp": false,
  "commit_pdf": true,
  "publish_release": true,
- "note": "render ladder: bounded retry budget -> CSS flatten -> text layout"
+ "note": "login-redirect unwrap + faster flatten rung; final full-space run"
 }
