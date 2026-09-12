@@ -1,13 +1,11 @@
-state: phase inventory rc=0
-at:  2026-09-12T15:41:02Z
-load: 15:41:02 up 4 min,  0 user,  load average: 0.32, 0.35, 0.18
-mem:  948/15989 MB
+state: heartbeat
+at:  2026-09-12T15:41:05Z
+load: 15:41:05 up 4 min,  0 user,  load average: 0.32, 0.35, 0.18
+mem:  981/15989 MB
 disk: /dev/root 145G 59G 86G 41% /
 
 ## report
-ty 72
-## system deps
-fonts: 53  mem: 15989 MB
+89 MB
 ## python deps
 weasyprint 70.0 | pypdf 6.18.1 | reportlab 5.0.1
 ## selftest (offline logic + engine semantics)
@@ -61,6 +59,7 @@ integration: PASSED
 ## build phases
 --- phase: inventory (started 15:39:52) ---
 phase inventory rc=0 ended 15:41:02  |  [15:41:02] inventory: {"method": "rendered-navigation", "pages": 448, "denied_filtered": 0, "expand_failures": 0, "roots": 1, "depth_histogram": {"1": 1, "3": 153, "2": 37, "4": 158, "5": 64, "6": 17, "7": 5, "8": 7, "9": 6}} [15:41:02] pages to build: 448 (order=448) [15:41:02] DONE in 70s 
+--- phase: fetch (started 15:41:03) ---
 
 ## live build log (last 40 lines)
 === phase inventory ===
@@ -90,3 +89,6 @@ phase inventory rc=0 ended 15:41:02  |  [15:41:02] inventory: {"method": "render
 [15:41:02] inventory: {"method": "rendered-navigation", "pages": 448, "denied_filtered": 0, "expand_failures": 0, "roots": 1, "depth_histogram": {"1": 1, "3": 153, "2": 37, "4": 158, "5": 64, "6": 17, "7": 5, "8": 7, "9": 6}}
 [15:41:02] pages to build: 448 (order=448)
 [15:41:02] DONE in 70s
+=== phase fetch ===
+[15:41:04] pages to build: 448 (order=448)
+[15:41:04] fetching + cleaning 448 pages ...
