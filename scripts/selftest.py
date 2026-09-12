@@ -237,6 +237,8 @@ def main():
     check(str(structure[f"{SD}.Administering"]["first_page"]) in toc_text,
           "TOC prints the real page number of the first topic")
 
+    fails += fallback_selftest(ws, fails)
+
     print()
     if args.with_render:
         fails += render_selftest(ws, fails)
@@ -246,6 +248,76 @@ def main():
             print("  -", f)
         sys.exit(1)
     print("SELFTEST PASSED - pipeline logic verified offline")
+
+
+def fallback_selftest(ws, fails):
+    """The recovery ladder for pages the CSS engine cannot lay out.
+
+    This is the code that runs when a page blows up rendering, and it must never
+    need that engine: profile the page, flatten its CSS, lay the text out with
+    ReportLab. Content and links have to survive all three, because a page built by
+    the fallback still has to satisfy 'everything is in the PDF' and 'links to it
+    jump inside the PDF'.
+    """
+    from helixdocs.fallback import flatten_css, page_source_url, profile_html, render_text_pdf
+
+    print("== fallback-layout selftest (no CSS engine) ==")
+
+    def ck(cond, label, detail=""):
+        print(f"  {'ok  ' if cond else 'FAIL'} {label}" + (f"   {detail}" if detail else ""))
+        if not cond:
+            fails.append(label)
+
+    doc = f"{SD}.Developing.Workflow"
+    other = f"{SD}.Administering.Manage-users"
+    href = pretty_url(other, SPACE, SD)
+    rows = "".join(f"<tr><td>property {i}</td><td><a href='{href}'>related topic {i}</a></td>"
+                   f"<td>value &lt;{i}&gt;</td></tr>" for i in range(600))
+    html_file = os.path.join(ws, "fb-page.html")
+    open(html_file, "w").write(
+        f"<html><head><style>table{{display:flex}} .x{{color:red}}</style></head><body>"
+        f"<div id='content'><h1>Workflow</h1><p style='color:red'>intro {MARK[doc]} with a "
+        f"<a href='{href}'>sibling</a></p>"
+        f"<table class='x'><tr><th>Property</th><th>Link</th><th>Value</th></tr>{rows}</table>"
+        f"<p><img src='file://{ws}/assets/pic.png'></p></div>"
+        f"<div class='hx-src'>BMC Helix documentation &middot; {doc}</div></body></html>")
+
+    prof = profile_html(html_file)
+    ck(prof.get("tables") == 1 and prof.get("max_table_rows") >= 600,
+       "profile names the pathological structure", f"rows={prof.get('max_table_rows')}")
+    ck(prof.get("links") == 601, "profile counts the links", f"links={prof.get('links')}")
+
+    flat = os.path.join(ws, "fb-page.flat.html")
+    removed = flatten_css(html_file, flat)
+    ftxt = open(flat).read()
+    ck(removed.get("style_blocks") == 1 and removed.get("style_attrs") == 1,
+       "CSS flattening strips the author stylesheet", json.dumps(removed))
+    ck("property 599" in ftxt and href in ftxt,
+       "flattened page keeps its table rows and links")
+
+    import time
+    t0 = time.time()
+    pdf = os.path.join(ws, "fb-page.pdf")
+    n = render_text_pdf(html_file, pdf, "Workflow", page_source_url(doc, SPACE, None))
+    secs = time.time() - t0
+    ck(n >= 1, "fallback layout produces a PDF", f"{n} page(s) in {secs:.1f}s")
+    from pypdf import PdfReader
+    rd = PdfReader(pdf)
+    body = "\n".join((pg.extract_text() or "") for pg in rd.pages)
+    ck(MARK[doc] in body and "property 599" in body and "value <599>" in body,
+       "fallback page carries every line of the table, entities included")
+    ck("BMC Helix documentation" in body and "Workflow" in body,
+       "fallback page carries the title and the source marker")
+    ck("[image:" in body, "fallback page records the images it could not draw")
+    uris = [str(a.get_object().get("/A").get_object().get("/URI"))
+            for pg in rd.pages for a in (pg.get("/Annots") or [])
+            if a.get_object().get("/A") is not None
+            and a.get_object().get("/A").get_object().get("/URI") is not None]
+    ck(href in uris, "fallback links use the portal URL the assembler rewrites",
+       f"uris={len(uris)}")
+    ck(secs < 90, "fallback layout stays linear on a 600-row table", f"{secs:.1f}s")
+    print()
+    return fails
 
 
 def render_selftest(ws, fails):

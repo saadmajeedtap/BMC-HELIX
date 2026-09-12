@@ -82,6 +82,9 @@ def parse_args(argv=None):
     ap.add_argument("--page-render-timeout", type=int, default=240,
                     help="seconds a single page may take in WeasyPrint before it is "
                          "deferred to the retry engine and reported (0 = unlimited)")
+    ap.add_argument("--slow-page-timeout", type=int, default=900,
+                    help="seconds a single page may take on the serial retry "
+                         "(then it goes to the CSS-flattened / text-layout fallbacks)")
     ap.add_argument("--no-image-optimize", action="store_true",
                     help="keep portal images byte-for-byte (bigger PDF, exact source)")
     ap.add_argument("--image-max-width", type=int, default=1400,
@@ -262,27 +265,101 @@ def run(opts):
         bad = [d for d, v in render_index.items() if not v.get("ok")]
         if bad and (opts.retry_engine == "none" or not engine_available(opts.retry_engine)):
             # A page can legitimately need longer than the per-page cap (a 4 000-row
-            # table). Losing it is worse than being slow, so retry those pages one at
-            # a time with no time limit - the phase timeout is still the backstop.
-            log(f"re-rendering {len(bad)} slow page(s) serially with no page timeout ...")
+            # table), so the stragglers get a bounded second chance, serially. Bounded
+            # matters: the unbounded retry once turned one bad page into a build that
+            # ran 80 minutes and produced no PDF at all.
+            # The budget is shared, not per page: with several bad pages an unbounded
+            # per-page retry is how a whole run used to die in the render phase.
+            per = max(60, min(opts.slow_page_timeout, 1800 // max(1, len(bad))))
+            log(f"re-rendering {len(bad)} slow page(s) serially, {per}s each "
+                f"(shared budget 1800s) ...")
             slow = {d: metas[d] for d in bad if d in metas}
             render_index.update(render_all(slow, ws, engine=opts.engine, workers=1,
-                                           fresh=True, page_timeout=0, verbose=True))
-            render_index = {d: v for d, v in render_index.items()}
+                                           fresh=True, verbose=True,
+                                           page_timeout=per))
             bad = [d for d, v in render_index.items() if not v.get("ok")]
-            if bad:
-                log(f"{len(bad)} page(s) still unrendered; they are listed in the report")
         if bad and opts.retry_engine != "none" and opts.retry_engine != opts.engine \
                 and engine_available(opts.retry_engine):
             log(f"re-rendering {len(bad)} failed page(s) with {opts.retry_engine} ...")
             for d in bad:
-                p = render_index[d].get("pdf")
-                if p and os.path.exists(p):
-                    os.remove(p)
+                p_ = render_index[d].get("pdf")
+                if p_ and os.path.exists(p_):
+                    os.remove(p_)
             only = {d: metas[d] for d in bad if d in metas}
             render_index.update(render_all(only, ws, engine=opts.retry_engine,
                                            workers=opts.workers, fresh=True,
-                                           page_timeout=0))
+                                           page_timeout=per))
+            bad = [d for d, v in render_index.items() if not v.get("ok")]
+        if bad and opts.engine == "weasyprint":
+            # Author CSS is what usually explodes (deep selectors, nested tables). The
+            # same page without it still renders real tables and images, so try that
+            # before dropping styling completely.
+            from helixdocs.fallback import flatten_css
+            log(f"trying a CSS-flattened copy of {len(bad)} page(s) ...")
+            flat = {}
+            for d in bad:
+                hf = (metas.get(d) or {}).get("html_file")
+                if not hf or not os.path.exists(hf):
+                    continue
+                f = os.path.join(os.path.dirname(hf),
+                                 os.path.splitext(os.path.basename(hf))[0] + ".flat.html")
+                try:
+                    flatten_css(hf, f)
+                    flat[d] = dict(metas[d], html_file=f)
+                except Exception as exc:
+                    log(f"  [flatten] {d}: {type(exc).__name__}: {exc}")
+            if flat:
+                got = render_all(flat, ws, engine=opts.engine, workers=opts.workers,
+                                 fresh=True, verbose=False,
+                                 page_timeout=max(60, min(opts.page_render_timeout,
+                                                           900 // max(1, len(bad)))))
+                for d, r in got.items():
+                    if r.get("ok"):
+                        r["degraded"] = "css-flattened"
+                        log(f"  [flatten] ok: {d.split('.')[-1]} -> {r['pages']} page(s)")
+                render_index.update({d: r for d, r in got.items() if r.get("ok")})
+                bad = [d for d, v in render_index.items() if not v.get("ok")]
+        if bad:
+            # Last rung: reportlab laying out the text and tables directly. No CSS
+            # engine, so it cannot hang; and because it keeps the link annotations,
+            # links *to* this page still resolve and links *on* it still jump inside
+            # the PDF. The page is present, readable and complete - only unstyled.
+            from helixdocs.fallback import page_source_url, profile_html, render_text_pdf
+            log(f"{len(bad)} page(s) no CSS engine can lay out -> fallback text layout "
+                f"(content and links kept, styling dropped)")
+            os.makedirs(os.path.join(ws, "pdf"), exist_ok=True)
+            for d in bad:
+                hf = (metas.get(d) or {}).get("html_file")
+                prof = {}
+                if hf and os.path.exists(hf):
+                    try:
+                        prof = profile_html(hf)
+                    except Exception as exc:
+                        prof = {"profile-error": repr(exc)}
+                    log(f"  [profile] {d}: {json.dumps(prof, sort_keys=True)}")
+                pf = (render_index.get(d) or {}).get("pdf") or os.path.join(
+                    ws, "pdf", os.path.splitext(os.path.basename(hf or d))[0] + ".pdf")
+                try:
+                    n = render_text_pdf(hf, pf, (metas.get(d) or {}).get("title") or "",
+                                        page_source_url(d, opts.space_path, metas.get(d)))
+                    log(f"  [fallback] {d.split('.')[-1]} -> {n} page(s)")
+                    render_index[d] = {"pdf": pf, "pages": n, "ok": True,
+                                       "degraded": "text-layout",
+                                       "error": (render_index.get(d) or {}).get("error"),
+                                       "profile": prof}
+                except Exception as exc:
+                    log(f"  [fallback] FAILED for {d}: {type(exc).__name__}: {exc}")
+            still = [d for d, v in render_index.items() if not v.get("ok")]
+            if still:
+                log(f"{len(still)} page(s) still unrendered; they are listed in the report")
+            ip = os.path.join(ws, "render-index.json")
+            if os.path.exists(ip):
+                try:
+                    ix = json.load(open(ip))
+                    ix.update(render_index)
+                    json.dump(ix, open(ip, "w"), indent=1)
+                except Exception as exc:
+                    log(f"  could not refresh render-index.json: {exc!r}")
     else:
         ri = os.path.join(ws, "render-index.json")
         render_index = json.load(open(ri)) if os.path.exists(ri) else {}
@@ -425,6 +502,10 @@ if __name__ == "__main__":
               f"fetch_failures={s.get('fetch_failures')} unresolved_links={left}",
               flush=True)
         sys.exit(3)
+    if s.get("rendered_degraded"):
+        print(f"NOTE: {s['rendered_degraded']} page(s) needed a fallback layout "
+              f"(their text, tables and links are complete; styling was simplified) - "
+              f"each one is named with a structural profile in coverage.md", flush=True)
     if left and capped:
         print(f"NOTE: {left} in-space link(s) still point at the portal because "
               f"{capped} page(s) were excluded by --max-docs; a full build resolves "

@@ -6,7 +6,7 @@
 #
 # Repo override: REPO=owner/name bash scripts/watch_ci.sh
 set -uo pipefail
-REPO="${REPO:-saadmajeedtap/BMC-HELIX}"
+REPO="${REPO:-saadmajeedtap/arena}"
 BRANCH="${BRANCH:-docs-build}"
 INTERVAL="${1:-60}"
 TMP="$(mktemp -d)"

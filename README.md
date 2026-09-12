@@ -108,7 +108,7 @@ complete and internally linked, only the printed page numbers are absent.
 ### Locally (same pipeline, your machine, ~30-60 min for the whole space)
 
 ```bash
-git clone https://github.com/saadmajeedtap/BMC-HELIX.git && cd BMC-HELIX
+git clone https://github.com/saadmajeedtap/arena.git && cd arena
 
 # Debian/Ubuntu: WeasyPrint needs pango/cairo + fonts
 sudo apt-get update && sudo apt-get install -y \
@@ -183,9 +183,21 @@ which is the file to read if a number above is not what you expect.
 
 Requirements: Python 3.10+, network access to `docs.helixops.ai`, `pango/cairo`.
 Phases are cached in `--workspace`, so a re-run only rebuilds what changed, and an
-interrupted build resumes. Use `--engine chromium --retry-engine none` (after
-`./scripts/bootstrap.sh chromium`) if you want browser-exact CSS, `--no-attachments`
-to skip mirroring files, `--delay 0.2` to be gentler on the portal.
+interrupted build resumes.
+
+**A single page can never lose you the document.** WeasyPrint's layout can be driven
+into a long spin by one page (a very wide or deeply nested table); that once cost a
+build 80 minutes and its PDF. So a page that exceeds `--page-render-timeout` walks
+down a ladder: serial retry under a shared `--slow-page-timeout` budget, then the same
+page with its author CSS stripped, then a pure-Python layout that has no CSS engine to
+hang on. Each rung keeps every word, table row and link, so the page is still in the
+PDF and links to it still jump inside the document; only styling gets simpler. Any page
+that needed a rung is listed in `coverage.md` with a structural profile of what choked
+the engine, and counted as `rendered_degraded`.
+
+Use `--engine chromium --retry-engine none` (after `./scripts/bootstrap.sh chromium`)
+if you want browser-exact CSS, `--no-attachments` to skip mirroring files, `--delay
+0.2` to be gentler on the portal.
 
 Other spaces work the same way — e.g. `--space-path
 Service-Management/IT-Service-Management/BMC-Helix-ITSM-Service-Desk/servicedesk263`.

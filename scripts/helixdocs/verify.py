@@ -110,6 +110,8 @@ def write_reports(out_dir, inv, metas, render_index, structure, stats, samples,
                and not (metas.get(d) or {}).get("is_redirect")
                and not (metas.get(d) or {}).get("error")]
     thin = [r for r in content_rows if r["status"] != "ok"]
+    degraded = {d: (v.get("degraded") or "yes") for d, v in (render_index or {}).items()
+                if v.get("degraded")}
     summary = {
         "pdf": os.path.basename(pdf_path),
         "pdf_bytes": os.path.getsize(pdf_path) if os.path.exists(pdf_path) else 0,
@@ -117,6 +119,7 @@ def write_reports(out_dir, inv, metas, render_index, structure, stats, samples,
         "docs_in_pdf": len(structure or {}),
         "pdf_pages": pdf_pages if pdf_pages is not None else "",
         "rendered_ok": rendered,
+        "rendered_degraded": len(degraded),
         "redirect_pages": redirects,
         "fetch_failures": len(failed),
         "filtered_authoring_artifacts": len(inv.denied),
@@ -136,7 +139,11 @@ def write_reports(out_dir, inv, metas, render_index, structure, stats, samples,
     json.dump({"summary": summary, "missing": missing[:500], "failed": failed[:200],
                "thin": thin[:400], "denied": inv.denied[:400],
                "unresolved_links": unresolved[:200],
-               "unresolved_targets": targets},
+               "unresolved_targets": targets,
+               "degraded_pages": {d: {"mode": m,
+                                      "profile": (render_index[d] or {}).get("profile") or {},
+                                      "first_error": (render_index[d] or {}).get("error")}
+                                  for d, m in degraded.items()}},
               open(os.path.join(out_dir, "coverage.json"), "w"), indent=1)
     json.dump(content_rows, open(os.path.join(out_dir, "page-map.json"), "w"), indent=1)
 
@@ -170,6 +177,18 @@ def write_reports(out_dir, inv, metas, render_index, structure, stats, samples,
         for r in thin[:40]:
             md.append(f"- p{r['page']} `{r['doc']}` chars={r['chars']} status={r['status']} "
                       f"notes={r['notes']}")
+        md.append("")
+    if degraded:
+        md += ["### Pages the CSS engine could not lay out (fallback layout used)", "",
+               "Their content is in the PDF and their links work; only the styling is",
+               "simplified. The profile is why the renderer gave up on them.", "",
+               "| document | mode | first error | structure at the time |", "|---|---|---|---|"]
+        for d, m in list(degraded.items())[:40]:
+            v = render_index[d] or {}
+            prof = ", ".join(f"{k}={val}" for k, val in sorted((v.get("profile") or {}).items())
+                             if k in ("bytes", "tables", "max_table_rows", "max_table_cells",
+                                      "tables_nested", "style_bytes", "data_uri_bytes", "imgs"))
+            md.append(f"| `{d}` | {m} | {(v.get('error') or '')[:70]} | {prof[:190]} |")
         md.append("")
     if missing:
         md += ["### In the portal but missing from the PDF", ""]
