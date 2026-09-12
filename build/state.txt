@@ -1,18 +1,11 @@
-state: phase render rc=0
-at:  2026-09-12T15:58:53Z
-load: 15:58:53 up 22 min,  0 user,  load average: 1.06, 1.37, 1.18
-mem:  970/15989 MB
+state: phase assemble rc=0
+at:  2026-09-12T15:59:07Z
+load: 15:59:07 up 22 min,  0 user,  load average: 1.04, 1.35, 1.18
+mem:  1254/15989 MB
 disk: /dev/root 145G 59G 86G 41% /
 
 ## report
-s. 0
-  ok   every page rendered   6/6
-  ok   each page produced >=1 PDF page
-  ok   content hidden behind a tab is present in the PDF
-  ok   content hidden in a collapsed block is present
-  ok   table kept, site navigation stripped
-  ok   the page image is embedded in the PDF   xobjects=1
-  ok   no documentation link still opens the website   left=0
+the website   left=0
   ok   in-document jumps exist   goto=28
   ok   title + source marker found for every page   {}
   ok   PDF bookmarks mirror the navigation tree   6/6
@@ -48,45 +41,47 @@ phase inventory rc=0 ended 15:41:02  |  [15:41:02] inventory: {"method": "render
 phase fetch rc=0 ended 15:46:42  |  [15:46:42] attachments mirrored: 15/15 files [15:46:42] fetched: ok=496 redirect=0 http-fail=0 http={'requests': 1650, 'cache_hits': 322, 'errors': 0, 'retries': 0, 'bytes': 90595534, 'seconds': 338.3, 'mb': 90.6} [15:46:42] DONE in 338s 
 --- phase: render (started 15:46:43) ---
 phase render rc=0 ended 15:58:53  |  [15:58:29] trying a CSS-flattened copy of 1 page(s) ... [15:58:53]   [flatten] ok: Rebranding-BMC-Helix-ITSM-on-the-Universal-Client -> 19 page(s) [15:58:53] DONE in 730s 
+--- phase: assemble (started 15:58:54) ---
+phase assemble rc=0 ended 15:59:07  |  [assemble] pages=1918 docs=496 internalized=3281 external_left=1603 out=/tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf t=12s [15:59:07] PDF written: /tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf (148.3 MB, 1918 pages) [15:59:07] DONE in 13s 
 
 ## live build log (last 40 lines)
-[fetch] cleaned 448/448 pages (http stats: {'requests': 1583, 'cache_hits': 322, 'errors': 0, 'retries': 0, 'bytes': 83500571, 'seconds': 323.3, 'mb': 83.5})
-[15:46:27] closure round 1: 48 page(s) reachable by link but not in the navigation tree -> added
-[fetch] cleaned 48/48 pages (http stats: {'requests': 1650, 'cache_hits': 322, 'errors': 0, 'retries': 0, 'bytes': 90595534, 'seconds': 338.3, 'mb': 90.6})
-[15:46:42] attachments mirrored: 15/15 files
-[15:46:42] fetched: ok=496 redirect=0 http-fail=0 http={'requests': 1650, 'cache_hits': 322, 'errors': 0, 'retries': 0, 'bytes': 90595534, 'seconds': 338.3, 'mb': 90.6}
-[15:46:42] DONE in 338s
-=== phase render ===
-[15:46:43] pages to build: 496 (order=496)
-[15:46:43] rendering pages with weasyprint ...
-[render] engine=weasyprint to_render=496 cached=0
-[render] 25/496 pages (9s, 0.4s/page)
-[render] 50/496 pages (24s, 0.5s/page)
-[render] 75/496 pages (35s, 0.5s/page)
-[render] 100/496 pages (41s, 0.4s/page)
-[render] 125/496 pages (47s, 0.4s/page)
-[render] 150/496 pages (54s, 0.4s/page)
-[render] 175/496 pages (74s, 0.4s/page)
-[render] 200/496 pages (90s, 0.5s/page)
-[render] 225/496 pages (108s, 0.5s/page)
-[render] 250/496 pages (115s, 0.5s/page)
-[render] 275/496 pages (126s, 0.5s/page)
-[render] 300/496 pages (134s, 0.4s/page)
-[render] 325/496 pages (145s, 0.4s/page)
-[render] 350/496 pages (161s, 0.5s/page)
-[render] 375/496 pages (173s, 0.5s/page)
-[render] 400/496 pages (183s, 0.5s/page)
-[render] 425/496 pages (192s, 0.5s/page)
-[render] 450/496 pages (202s, 0.4s/page)
-[render] 475/496 pages (208s, 0.4s/page)
-[render] slow/failed ement.BMC-Helix-ITSM.itsm263.Setting-up-and-going-live.Making-BMC-Helix-ITSM-available-to-your-users.Rebranding-BMC-Helix-ITSM-on-the-Universal-Client: TimeoutError: page render exceeded 240s
-[render] ok=495 failed=1 pages=1890 t=405s
-[render] failures: ['Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Setting-up-and-going-live.Making-BMC-Helix-ITSM-available-to-your-users.Rebranding-BMC-Helix-ITSM-on-the-Universal-Client']
-[15:53:29] re-rendering 1 slow page(s) serially, 300s each (shared budget 600s) ...
-[render] engine=weasyprint to_render=1 cached=0
-[render] slow/failed ement.BMC-Helix-ITSM.itsm263.Setting-up-and-going-live.Making-BMC-Helix-ITSM-available-to-your-users.Rebranding-BMC-Helix-ITSM-on-the-Universal-Client: TimeoutError: page render exceeded 300s
-[render] ok=0 failed=1 pages=0 t=300s
-[render] failures: ['Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Setting-up-and-going-live.Making-BMC-Helix-ITSM-available-to-your-users.Rebranding-BMC-Helix-ITSM-on-the-Universal-Client']
-[15:58:29] trying a CSS-flattened copy of 1 page(s) ...
-[15:58:53]   [flatten] ok: Rebranding-BMC-Helix-ITSM-on-the-Universal-Client -> 19 page(s)
-[15:58:53] DONE in 730s
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 3 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 15 vs. 0
+Annotation sizes differ: 1 vs. 0
+Annotation sizes differ: 4 vs. 0
+Annotation sizes differ: 1 vs. 0
+Annotation sizes differ: 1 vs. 0
+Annotation sizes differ: 1 vs. 0
+Annotation sizes differ: 1 vs. 0
+Annotation sizes differ: 5 vs. 0
+Annotation sizes differ: 3 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 1 vs. 0
+Annotation sizes differ: 1 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 1 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 1 vs. 0
+Annotation sizes differ: 1 vs. 0
+Annotation sizes differ: 5 vs. 0
+Annotation sizes differ: 1 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 4 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+[assemble] stamped 1909 content pages
+[assemble] pages=1918 docs=496 internalized=3281 external_left=1603 out=/tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf t=12s
+[15:59:07] PDF written: /tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf (148.3 MB, 1918 pages)
+[15:59:07] DONE in 13s
