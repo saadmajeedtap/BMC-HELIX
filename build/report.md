@@ -53,3 +53,6 @@ selftest: PASSED
 
 INTEGRATION PASSED - enumeration, closure, cleaning and link mapping verified
 integration: PASSED
+## build phases
+--- phase: inventory (started 15:39:52) ---
+phase inventory rc=0 ended 15:41:02  |  [15:41:02] inventory: {"method": "rendered-navigation", "pages": 448, "denied_filtered": 0, "expand_failures": 0, "roots": 1, "depth_histogram": {"1": 1, "3": 153, "2": 37, "4": 158, "5": 64, "6": 17, "7": 5, "8": 7, "9": 6}} [15:41:02] pages to build: 448 (order=448) [15:41:02] DONE in 70s 

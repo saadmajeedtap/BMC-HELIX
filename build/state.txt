@@ -1,13 +1,11 @@
-state: tests done
-at:  2026-09-12T15:39:51Z
-load: 15:39:51 up 3 min,  0 user,  load average: 0.64, 0.38, 0.17
-mem:  1035/15989 MB
+state: phase inventory rc=0
+at:  2026-09-12T15:41:02Z
+load: 15:41:02 up 4 min,  0 user,  load average: 0.32, 0.35, 0.18
+mem:  948/15989 MB
 disk: /dev/root 145G 59G 86G 41% /
 
 ## report
-## build log
-date: 2026-09-12T15:39:25Z  runner: x86_64  sections=ALL
-args: --space-path Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263 --product BMC Helix ITSM --version 26.3 --workspace /tmp/helix-build --out /tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf --engine weasyprint --workers 4 --http-workers 10 --delay 0.06 --nav-batch 60 --image-max-width 1200 --image-quality 72
+ty 72
 ## system deps
 fonts: 53  mem: 15989 MB
 ## python deps
@@ -60,45 +58,35 @@ selftest: PASSED
 
 INTEGRATION PASSED - enumeration, closure, cleaning and link mapping verified
 integration: PASSED
+## build phases
+--- phase: inventory (started 15:39:52) ---
+phase inventory rc=0 ended 15:41:02  |  [15:41:02] inventory: {"method": "rendered-navigation", "pages": 448, "denied_filtered": 0, "expand_failures": 0, "roots": 1, "depth_histogram": {"1": 1, "3": 153, "2": 37, "4": 158, "5": 64, "6": 17, "7": 5, "8": 7, "9": 6}} [15:41:02] pages to build: 448 (order=448) [15:41:02] DONE in 70s 
 
 ## live build log (last 40 lines)
-  ok   coverage: nothing missing   {'pdf': 'Demo-1.0-complete.pdf', 'pdf_bytes': 981004, 'inventory_pages': 9, 'docs_in_pdf': 8, 'pdf_pages': 10, 'rendered_ok': 8, 'rendered_degraded': 0, 'redirect_pages': 1, 'fetch_failures': 0, 'filt
-  ok   coverage: 100%   100.0
-  ok   bookmarks cover every page   8/8
-
-== end-to-end assemble+verify (synthetic render) ==
-[assemble] stamped 8 content pages
-[assemble] pages=10 docs=8 internalized=10 external_left=8 out=/tmp/helix-integration/e2e.pdf t=0s
-  ok   e2e: every page present in merged PDF   10 pages
-  ok   e2e: portal links converted to in-document jumps   10
-  ok   e2e: no portal link left un-resolved   0
-  ok   e2e: external links preserved   8
-  ok   e2e: structure covers every page   8
-  ok   e2e: each page starts on its own PDF page
-
-== scoped + capped smoke build (test-build honesty) ==
-[15:39:50] enumerating the space: every page, following the portal's own rendered navigation and all in-space links (link closure) ...
-[nav] round 1: visited=1 pages=3 queued=1 t=0s
-[nav] round 2: visited=2 pages=7 queued=3 t=0s
-[nav] round 3: visited=5 pages=9 queued=2 t=0s
-[nav] round 4: visited=7 pages=9 queued=0 t=0s
-[15:39:50] inventory: {"method": "rendered-navigation", "pages": 9, "denied_filtered": 2, "expand_failures": 0, "roots": 1, "depth_histogram": {"1": 1, "2": 2, "3": 4, "4": 2}}
-[15:39:50] pages to build: 7 (order=7)
-[15:39:50] --max-docs: 4 inventoried page(s) recorded in capped.json and left out of this build on purpose
-[15:39:50] fetching + cleaning 3 pages ...
-[fetch] cleaned 3/3 pages (http stats: {'requests': 10, 'cache_hits': 3, 'errors': 0, 'retries': 0, 'bytes': 12753, 'seconds': 0.4, 'mb': 0.0})
-[15:39:51] attachments mirrored: 1/1 files
-[15:39:51] fetched: ok=3 redirect=0 http-fail=0 http={'requests': 10, 'cache_hits': 3, 'errors': 0, 'retries': 0, 'bytes': 12753, 'seconds': 0.4, 'mb': 0.0}
-[15:39:51] DONE in 0s
-  ok   --max-docs records the pages it left out   4 pages
-  ok   a scoped run never crawls the rest of the space   ['Getting-started']
-  ok   pages excluded by the cap are not reported as missing content   missing=0 capped=4
-  ok   the report states how many pages a test build left out on purpose   4
-  ok   …and scores coverage against what the run actually asked for   100.0
-  ok   report text written   824 chars
-
-== http politeness/cache ==
-    {"requests": 17, "cache_hits": 9, "errors": 0, "retries": 0, "bytes": 19080, "seconds": 2.3, "mb": 0.0}
-  ok   zero http errors on a clean run
-
-INTEGRATION PASSED - enumeration, closure, cleaning and link mapping verified
+=== phase inventory ===
+[15:39:52] enumerating the space: every page, following the portal's own rendered navigation and all in-space links (link closure) ...
+[nav] round 1: visited=1 pages=17 queued=16 t=1s
+[nav] round 2: visited=17 pages=130 queued=113 t=5s
+[nav] round 3: visited=77 pages=241 queued=117 t=15s
+[nav] round 4: visited=137 pages=324 queued=84 t=26s
+[nav] round 5: visited=197 pages=365 queued=41 t=35s
+[nav] round 6: visited=238 pages=404 queued=39 t=42s
+[nav] round 7: visited=277 pages=423 queued=19 t=48s
+[nav] round 8: visited=296 pages=427 queued=5 t=51s
+[nav] round 9: visited=301 pages=431 queued=4 t=53s
+[nav] round 10: visited=305 pages=436 queued=5 t=55s
+[nav] round 11: visited=310 pages=438 queued=2 t=56s
+[nav] round 12: visited=312 pages=439 queued=1 t=58s
+[nav] round 13: visited=313 pages=440 queued=1 t=59s
+[nav] round 14: visited=314 pages=441 queued=1 t=61s
+[nav] round 15: visited=315 pages=442 queued=1 t=62s
+[nav] round 16: visited=316 pages=443 queued=1 t=63s
+[nav] round 17: visited=317 pages=444 queued=1 t=64s
+[nav] round 18: visited=318 pages=445 queued=1 t=65s
+[nav] round 19: visited=319 pages=446 queued=1 t=66s
+[nav] round 20: visited=320 pages=447 queued=1 t=68s
+[nav] round 21: visited=321 pages=448 queued=1 t=69s
+[nav] round 22: visited=322 pages=448 queued=0 t=70s
+[15:41:02] inventory: {"method": "rendered-navigation", "pages": 448, "denied_filtered": 0, "expand_failures": 0, "roots": 1, "depth_histogram": {"1": 1, "3": 153, "2": 37, "4": 158, "5": 64, "6": 17, "7": 5, "8": 7, "9": 6}}
+[15:41:02] pages to build: 448 (order=448)
+[15:41:02] DONE in 70s
