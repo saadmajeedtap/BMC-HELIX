@@ -82,9 +82,10 @@ def parse_args(argv=None):
     ap.add_argument("--page-render-timeout", type=int, default=240,
                     help="seconds a single page may take in WeasyPrint before it is "
                          "deferred to the retry engine and reported (0 = unlimited)")
-    ap.add_argument("--slow-page-timeout", type=int, default=900,
-                    help="seconds a single page may take on the serial retry "
-                         "(then it goes to the CSS-flattened / text-layout fallbacks)")
+    ap.add_argument("--slow-page-timeout", type=int, default=300,
+                    help="seconds a single page may take on the serial retry; pages that "
+                         "still fail go to the CSS-flattened retry and then the "
+                         "pure-python text layout, so this stays a modest second chance")
     ap.add_argument("--no-image-optimize", action="store_true",
                     help="keep portal images byte-for-byte (bigger PDF, exact source)")
     ap.add_argument("--image-max-width", type=int, default=1400,
@@ -270,9 +271,9 @@ def run(opts):
             # ran 80 minutes and produced no PDF at all.
             # The budget is shared, not per page: with several bad pages an unbounded
             # per-page retry is how a whole run used to die in the render phase.
-            per = max(60, min(opts.slow_page_timeout, 1800 // max(1, len(bad))))
+            per = max(60, min(opts.slow_page_timeout, 600 // max(1, len(bad))))
             log(f"re-rendering {len(bad)} slow page(s) serially, {per}s each "
-                f"(shared budget 1800s) ...")
+                f"(shared budget 600s) ...")
             slow = {d: metas[d] for d in bad if d in metas}
             render_index.update(render_all(slow, ws, engine=opts.engine, workers=1,
                                            fresh=True, verbose=True,
@@ -349,17 +350,20 @@ def run(opts):
                                        "profile": prof}
                 except Exception as exc:
                     log(f"  [fallback] FAILED for {d}: {type(exc).__name__}: {exc}")
-            still = [d for d, v in render_index.items() if not v.get("ok")]
-            if still:
-                log(f"{len(still)} page(s) still unrendered; they are listed in the report")
+            bad = [d for d, v in render_index.items() if not v.get("ok")]
+        # `verify` may run as a separate process (CI runs one phase per process), so the
+        # ladder's results - including which pages were degraded - have to be on disk,
+        # not just in memory, or the report under-states what was traded away.
+        if "render" in phases and render_index:
             ip = os.path.join(ws, "render-index.json")
-            if os.path.exists(ip):
-                try:
-                    ix = json.load(open(ip))
-                    ix.update(render_index)
-                    json.dump(ix, open(ip, "w"), indent=1)
-                except Exception as exc:
-                    log(f"  could not refresh render-index.json: {exc!r}")
+            try:
+                ix = json.load(open(ip)) if os.path.exists(ip) else {}
+            except Exception:
+                ix = {}
+            ix.update(render_index)
+            json.dump(ix, open(ip, "w"), indent=1)
+        if bad:
+            log(f"{len(bad)} page(s) still unrendered; they are listed in the report")
     else:
         ri = os.path.join(ws, "render-index.json")
         render_index = json.load(open(ri)) if os.path.exists(ri) else {}

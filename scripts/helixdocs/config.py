@@ -93,6 +93,29 @@ def _second_path_segment(url: str) -> str:
     return m.group(1).lower() if m else ""
 
 
+_XREDIRECT = re.compile(r"/bin/login/[A-Za-z0-9/_-]*\?[A-Za-z0-9_&=-]*?xredirect=(?P<t>[^&\s]+)", re.I)
+
+
+def unwrap_login_url(url: str) -> str:
+    """Follow an XWiki login redirect to the page behind it.
+
+    The portal wraps links to permission-gated pages as
+    ``/bin/login/XWiki/XWikiLogin?xredirect=/bin/<space>/<Page>/``. The target is
+    ordinary documentation, and leaving the wrapper in place means a link that we
+    *could* answer from the PDF instead stays pointing at the website's login form.
+    """
+    if not url or "xredirect=" not in url:
+        return url
+    m = _XREDIRECT.search(url)
+    if not m:
+        return url
+    from urllib.parse import unquote
+    t = unquote(m.group("t"))
+    if re.match(r"https?://", t):
+        return t
+    return BASE + (t if t.startswith("/") else "/" + t)
+
+
 def url_to_doc(url: str, space_path: str, space_dot_name: str) -> str | None:
     """Map an in-space documentation URL to a canonical doc id (None if out of scope).
 
@@ -102,7 +125,7 @@ def url_to_doc(url: str, space_path: str, space_dot_name: str) -> str | None:
     """
     if not url:
         return None
-    u = url.strip()
+    u = unwrap_login_url(url.strip())      # links to gated pages hide behind a login URL
     if u.startswith("/") and not u.startswith("//"):
         u = BASE + u
     if not re.match(r"https?://", u):

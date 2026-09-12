@@ -14,7 +14,7 @@ import os
 import re
 import time
 
-from .config import BASE, pretty_url
+from .config import BASE, pretty_url, unwrap_login_url
 
 
 # --------------------------------------------------------------------- helpers
@@ -364,6 +364,10 @@ def assemble(inv, metas, render_index, out_dir, product, version, opts, verbose=
             doc = doc_by_url.get(u)
             if doc is None:
                 doc = doc_by_url.get(u.replace("https://docs.helixops.ai", BASE))
+            if doc is None and "xredirect=" in u:
+                # an <a> that still carries the portal's login wrapper: the page it
+                # redirects to is documentation, and we have it - jump there instead
+                doc = doc_by_url.get(re.sub(r"/$", "", unwrap_login_url(str(uri))))
             if doc is not None:
                 # a link to a moved/renamed page must land on its new content
                 for _ in range(6):

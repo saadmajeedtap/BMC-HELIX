@@ -75,6 +75,15 @@ def fixture_html(doc):
              '<p>External video: <a href="https://www.youtube.com/watch?v=abc123">demo</a></p>']
     for tgt in LINKS[doc]:
         inner.append(f'<p>See <a href="{pretty_url(tgt, SPACE, SD)}">{DOCS[tgt]}</a>.</p>')
+    if LINKS[doc]:
+        # the portal wraps links to permission-gated pages in a login redirect; the
+        # page is documentation we have, so the PDF must jump to it, not to a login form
+        gated = LINKS[doc][0]
+        pretty = pretty_url(gated, SPACE, SD)
+        from urllib.parse import quote
+        inner.append('<p>Restricted: <a href="'
+                     f'{BASE}/bin/login/XWiki/XWikiLogin?xredirect={quote(pretty, safe="")}"'
+                     f'>{DOCS[gated]} (login required on the website)</a>.</p>')
     return ('<html><body><h1 id="contentTitle">' + title + '</h1>'
             '<nav class="xwikiDocumentTree">NAV JUNK ' + MARK[doc] + '-navjunk</nav>'
             '<div id="xwikicontent">' + "".join(inner) + '</div>'

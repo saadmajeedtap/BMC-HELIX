@@ -16,7 +16,8 @@ from urllib.parse import unquote, urljoin, urlsplit
 
 from bs4 import BeautifulSoup
 
-from .config import ATTACH_EXT, BASE, IMAGE_EXT, is_denied, pretty_url, safe_name, url_to_doc
+from .config import (ATTACH_EXT, BASE, IMAGE_EXT, is_denied, pretty_url, safe_name,
+                    unwrap_login_url, url_to_doc)
 
 STRIP_SELECTORS = [
     "script", "style", "link[rel=stylesheet]", "noscript", "iframe", "object",
@@ -407,6 +408,10 @@ class PageBuilder:
                     a["class"] = (a.get("class") or []) + ["hx-dead-anchor"]
                 continue
             absu = _abs(base, href)
+            target = unwrap_login_url(absu)
+            if target != absu:            # a login wrapper around a documentation page
+                meta["notes"].append(f"login-redirect-followed:{target}")
+                absu = target
             d, how = self.resolve_link(absu)
             if how == "sibling-recovered":
                 meta["notes"].append(f"recovered-link:{d}")
