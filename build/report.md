@@ -59,3 +59,4 @@ phase inventory rc=0 ended 15:41:02  |  [15:41:02] inventory: {"method": "render
 --- phase: fetch (started 15:41:03) ---
 phase fetch rc=0 ended 15:46:42  |  [15:46:42] attachments mirrored: 15/15 files [15:46:42] fetched: ok=496 redirect=0 http-fail=0 http={'requests': 1650, 'cache_hits': 322, 'errors': 0, 'retries': 0, 'bytes': 90595534, 'seconds': 338.3, 'mb': 90.6} [15:46:42] DONE in 338s 
 --- phase: render (started 15:46:43) ---
+phase render rc=0 ended 15:58:53  |  [15:58:29] trying a CSS-flattened copy of 1 page(s) ... [15:58:53]   [flatten] ok: Rebranding-BMC-Helix-ITSM-on-the-Universal-Client -> 19 page(s) [15:58:53] DONE in 730s 
