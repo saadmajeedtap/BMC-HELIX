@@ -48,7 +48,8 @@ push_state() {
     echo; echo "## live build log (last 40 lines)"
     tail -40 "$W/build.log" 2>/dev/null; } > "$REPO/build/state.txt"
   cp "$W/report.md" "$REPO/build/report.md" 2>/dev/null || true
-  mkdir -p "$REPO/build"; rm -f "$REPO/build"/* 2>/dev/null
+  # never delete what we just wrote; huge files are skipped by the guard below,
+  # so nothing oversized ever reaches git (a >100MB blob makes the push fail)
   for f in summary.json coverage.md coverage.json inventory.md inventory.json \
            structure.json page-map.json tree-probe.json attachments.json \
            excerpt.pdf samples.tgz attachments.zip "$(basename "$OUT_PDF")"; do
