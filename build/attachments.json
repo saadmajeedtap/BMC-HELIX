@@ -1,0 +1,142 @@
+{
+ "total": 15,
+ "mirrored": 15,
+ "bytes": 783434,
+ "items": [
+  {
+   "doc": "Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Administering.Enabling-Advanced-Responsive-Navigation.Customizing-the-ITSM-navigation-bar",
+   "name": "old-custom-variables (7).css",
+   "url": "https://docs.helixops.ai/bin/download/Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263/Administering/Enabling-Advanced-Responsive-Navigation/Customizing-the-ITSM-navigation-bar/WebHome/old-custom-variables (7).css?rev=1.1",
+   "mirrored": true,
+   "local": "/tmp/helix-build/attachments/vice-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Administering.Enabling-Advanced-Responsive-Navigation.Customizing-the-ITSM-navigation-bar__old-custom-variables (7).css",
+   "bytes": 17819,
+   "sha256": "ffaae9dfe402e2adb3862c530ba6df59"
+  },
+  {
+   "doc": "Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Administering.Enabling-Advanced-Responsive-Navigation.Customizing-the-ITSM-navigation-bar",
+   "name": "transformed.css",
+   "url": "https://docs.helixops.ai/bin/download/Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263/Administering/Enabling-Advanced-Responsive-Navigation/Customizing-the-ITSM-navigation-bar/WebHome/transformed.css?rev=1.1",
+   "mirrored": true,
+   "local": "/tmp/helix-build/attachments/vice-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Administering.Enabling-Advanced-Responsive-Navigation.Customizing-the-ITSM-navigation-bar__transformed.css",
+   "bytes": 5290,
+   "sha256": "d33c6064128e0b1f12706a385b25e1b8"
+  },
+  {
+   "doc": "Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Administering.Enabling-Advanced-Responsive-Navigation.Customizing-the-ITSM-navigation-bar",
+   "name": "old-custom-variables (7).css",
+   "url": "https://docs.helixops.ai/bin/download/Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263/Administering/Enabling-Advanced-Responsive-Navigation/Customizing-the-ITSM-navigation-bar/WebHome/old-custom-variables (7).css?rev=1.1",
+   "mirrored": true,
+   "local": "/tmp/helix-build/attachments/vice-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Administering.Enabling-Advanced-Responsive-Navigation.Customizing-the-ITSM-navigation-bar__old-custom-variables (7).css",
+   "bytes": 17819,
+   "sha256": "ffaae9dfe402e2adb3862c530ba6df59"
+  },
+  {
+   "doc": "Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Administering.Enabling-Advanced-Responsive-Navigation.Customizing-the-ITSM-navigation-bar",
+   "name": "old-custom-variables (7).css",
+   "url": "https://docs.helixops.ai/bin/download/Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263/Administering/Enabling-Advanced-Responsive-Navigation/Customizing-the-ITSM-navigation-bar/WebHome/old-custom-variables (7).css?rev=1.1",
+   "mirrored": true,
+   "local": "/tmp/helix-build/attachments/vice-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Administering.Enabling-Advanced-Responsive-Navigation.Customizing-the-ITSM-navigation-bar__old-custom-variables (7).css",
+   "bytes": 17819,
+   "sha256": "ffaae9dfe402e2adb3862c530ba6df59"
+  },
+  {
+   "doc": "Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Administering.Enabling-Advanced-Responsive-Navigation.Customizing-the-ITSM-navigation-bar",
+   "name": "transformed.css",
+   "url": "https://docs.helixops.ai/bin/download/Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263/Administering/Enabling-Advanced-Responsive-Navigation/Customizing-the-ITSM-navigation-bar/WebHome/transformed.css?rev=1.1",
+   "mirrored": true,
+   "local": "/tmp/helix-build/attachments/vice-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Administering.Enabling-Advanced-Responsive-Navigation.Customizing-the-ITSM-navigation-bar__transformed.css",
+   "bytes": 5290,
+   "sha256": "d33c6064128e0b1f12706a385b25e1b8"
+  },
+  {
+   "doc": "Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Administering.Loading-Foundation-data-by-using-Data-Management.Migrating-Foundation-data-from-BMC-Helix-ITSM-to-a-new-environment",
+   "name": "MSSQL_Export_Foundation.bat",
+   "url": "https://docs.helixops.ai/bin/download/Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263/Administering/Loading-Foundation-data-by-using-Data-Management/Migrating-Foundation-data-from-BMC-Helix-ITSM-to-a-new-environment/WebHome/MSSQL_Export_Foundation.bat?rev=1.1",
+   "mirrored": true,
+   "local": "/tmp/helix-build/attachments/C-Helix-ITSM.itsm263.Administering.Loading-Foundation-data-by-using-Data-Management.Migrating-Foundation-data-from-BMC-Helix-ITSM-to-a-new-environment__MSSQL_Export_Foundation.bat",
+   "bytes": 5842,
+   "sha256": "ad2b9b93d14300e3dd94f635c79dc6fd"
+  },
+  {
+   "doc": "Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Administering.Loading-Foundation-data-by-using-Data-Management.Migrating-Foundation-data-from-BMC-Helix-ITSM-to-a-new-environment",
+   "name": "ORACLE_Export_Foundation.sql",
+   "url": "https://docs.helixops.ai/bin/download/Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263/Administering/Loading-Foundation-data-by-using-Data-Management/Migrating-Foundation-data-from-BMC-Helix-ITSM-to-a-new-environment/WebHome/ORACLE_Export_Foundation.sql?rev=1.1",
+   "mirrored": true,
+   "local": "/tmp/helix-build/attachments/C-Helix-ITSM.itsm263.Administering.Loading-Foundation-data-by-using-Data-Management.Migrating-Foundation-data-from-BMC-Helix-ITSM-to-a-new-environment__ORACLE_Export_Foundation.sql",
+   "bytes": 4312,
+   "sha256": "97d842c4496773aac519737d16f3b484"
+  },
+  {
+   "doc": "Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Developing.Customizing-BMC-Helix-ITSM.Enabling-rich-text-field-on-Progressive-Web-Application-screens.Enabling-rich-text-in-email-sent-from-a-ticket",
+   "name": "SHR_SV_Activity_Template_Generic.zip",
+   "url": "https://docs.helixops.ai/bin/download/Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263/Developing/Customizing-BMC-Helix-ITSM/Enabling-rich-text-field-on-Progressive-Web-Application-screens/Enabling-rich-text-in-email-sent-from-a-ticket/WebHome/SHR_SV_Activity_Template_Generic.zip?rev=1.1",
+   "mirrored": true,
+   "local": "/tmp/helix-build/attachments/3.Developing.Customizing-BMC-Helix-ITSM.Enabling-rich-text-field-on-Progressive-Web-Application-screens.Enabling-rich-text-in-email-sent-from-a-ticket__SHR_SV_Activity_Template_Generic.zip",
+   "bytes": 31878,
+   "sha256": "ad9a39ada0bad731e34cad92693e854c"
+  },
+  {
+   "doc": "Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Developing.Customizing-BMC-Helix-ITSM.Enabling-rich-text-field-on-Progressive-Web-Application-screens.Manually-updating-PWA-screens-to-accept-rich-text-by-updating-them-in-Developer-Studio",
+   "name": "SHR_SV_Activity_Template_Generic_ARTF-23.3.02.zip",
+   "url": "https://docs.helixops.ai/bin/download/Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263/Developing/Customizing-BMC-Helix-ITSM/Enabling-rich-text-field-on-Progressive-Web-Application-screens/Manually-updating-PWA-screens-to-accept-rich-text-by-updating-them-in-Developer-Studio/WebHome/SHR_SV_Activity_Template_Generic_ARTF-23.3.02.zip?rev=1.1",
+   "mirrored": true,
+   "local": "/tmp/helix-build/attachments/Enabling-rich-text-field-on-Progressive-Web-Application-screens.Manually-updating-PWA-screens-to-accept-rich-text-by-updating-them-in-Developer-Studio__SHR_SV_Activity_Template_Generic_ARTF-23.3.02.zip",
+   "bytes": 18893,
+   "sha256": "3d99bdef0d6b485414f14ecd68c4fdeb"
+  },
+  {
+   "doc": "Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Developing.Integrating-third-party-applications-with-BMC-Helix-ITSM-by-using-the-simplified-REST-API.Endpoints-in-the-simplified-REST-API",
+   "name": "swagger.json",
+   "url": "https://docs.helixops.ai/bin/download/Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263/Developing/Integrating-third-party-applications-with-BMC-Helix-ITSM-by-using-the-simplified-REST-API/Endpoints-in-the-simplified-REST-API/WebHome/swagger.json?rev=1.1",
+   "mirrored": true,
+   "local": "/tmp/helix-build/attachments/ITSM.itsm263.Developing.Integrating-third-party-applications-with-BMC-Helix-ITSM-by-using-the-simplified-REST-API.Endpoints-in-the-simplified-REST-API__swagger.json",
+   "bytes": 49852,
+   "sha256": "f93ec06eec7c1d6e73ae8828e27d4479"
+  },
+  {
+   "doc": "Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Inclusions-library.BMC-Helix-ITSM-compatibility-matrix",
+   "name": "BMC Helix ITSM Application and Smart IT Compatibility 23.3.01.pdf",
+   "url": "https://docs.helixops.ai/bin/download/Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263/Inclusions-library/BMC-Helix-ITSM-compatibility-matrix/WebHome/BMC Helix ITSM Application and Smart IT Compatibility 23.3.01.pdf?rev=1.1",
+   "mirrored": true,
+   "local": "/tmp/helix-build/attachments/Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Inclusions-library.BMC-Helix-ITSM-compatibility-matrix__BMC Helix ITSM Application and Smart IT Compatibility 23.3.01.pdf",
+   "bytes": 132691,
+   "sha256": "9cf2c97600f66d903d518aaa9b30b6ad"
+  },
+  {
+   "doc": "Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Inclusions-library.BMC-Helix-ITSM-compatibility-matrix",
+   "name": "BMC_Helix_Innovation_Suite_23_3_04_and_BMC_Helix_CMDB_23_3_04_Compatibility_Matrix_Dec_2024.pdf",
+   "url": "https://docs.helixops.ai/bin/download/Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263/Inclusions-library/BMC-Helix-ITSM-compatibility-matrix/WebHome/BMC_Helix_Innovation_Suite_23_3_04_and_BMC_Helix_CMDB_23_3_04_Compatibility_Matrix_Dec_2024.pdf?rev=1.1",
+   "mirrored": true,
+   "local": "/tmp/helix-build/attachments/Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Inclusions-library.BMC-Helix-ITSM-compatibility-matrix__BMC_Helix_Innovation_Suite_23_3_04_and_BMC_Helix_CMDB_23_3_04_Compatibility_Matrix_Dec_2024.pdf",
+   "bytes": 178144,
+   "sha256": "ee02895a5811e0188625188681ad2181"
+  },
+  {
+   "doc": "Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Integrating.Integrating-BMC-Helix-ITSM-with-BMC-Client-Management",
+   "name": "java_webstart.xml",
+   "url": "https://www.java.com/en/download/faq/java_webstart.xml",
+   "mirrored": true,
+   "local": "/tmp/helix-build/attachments/Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Integrating.Integrating-BMC-Helix-ITSM-with-BMC-Client-Management__java_webstart.xml",
+   "bytes": 16547,
+   "sha256": "7b9276266cbde1b61edac3354dce7353"
+  },
+  {
+   "doc": "Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Setting-up-and-going-live.Configuring-settings-to-use-Agentic-AI-capabilities.Enabling-the-creation-of-knowledge-articles-from-incidents-by-using-Knowledge-Curator",
+   "name": "ITSM_Knowledge_Curator_Generate_prompt_2025-08-20_Release_25.3.01 (ENG Only).zip",
+   "url": "https://docs.helixops.ai/bin/download/Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263/Setting-up-and-going-live/Configuring-settings-to-use-Agentic-AI-capabilities/Enabling-the-creation-of-knowledge-articles-from-incidents-by-using-Knowledge-Curator/WebHome/ITSM_Knowledge_Curator_Generate_prompt_2025-08-20_Release_25.3.01 (ENG Only).zip?rev=1.1",
+   "mirrored": true,
+   "local": "/tmp/helix-build/attachments/d-going-live.Configuring-settings-to-use-Agentic-AI-capabilities.Enabling-the-creation-of-knowledge-articles-from-incidents-by-using-Knowledge-Curator__ITSM_Knowledge_Curator_Generate_prompt_2025-08-20_Release_25.3.01 (ENG Only).zip",
+   "bytes": 2474,
+   "sha256": "c1a4871f902b1c377c8a301ce0cc603c"
+  },
+  {
+   "doc": "Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Troubleshooting.Support-information",
+   "name": "helix-saas-support-policy.pdf",
+   "url": "https://www.helixops.ai/content/dam/bmc/support/helix-saas-support-policy.pdf",
+   "mirrored": true,
+   "local": "/tmp/helix-build/attachments/Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Troubleshooting.Support-information__helix-saas-support-policy.pdf",
+   "bytes": 278764,
+   "sha256": "e6b9dc0ea2d2c5c26fb011fb70ff3af0"
+  }
+ ]
+}

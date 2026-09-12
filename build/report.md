@@ -57,3 +57,4 @@ integration: PASSED
 --- phase: inventory (started 15:39:52) ---
 phase inventory rc=0 ended 15:41:02  |  [15:41:02] inventory: {"method": "rendered-navigation", "pages": 448, "denied_filtered": 0, "expand_failures": 0, "roots": 1, "depth_histogram": {"1": 1, "3": 153, "2": 37, "4": 158, "5": 64, "6": 17, "7": 5, "8": 7, "9": 6}} [15:41:02] pages to build: 448 (order=448) [15:41:02] DONE in 70s 
 --- phase: fetch (started 15:41:03) ---
+phase fetch rc=0 ended 15:46:42  |  [15:46:42] attachments mirrored: 15/15 files [15:46:42] fetched: ok=496 redirect=0 http-fail=0 http={'requests': 1650, 'cache_hits': 322, 'errors': 0, 'retries': 0, 'bytes': 90595534, 'seconds': 338.3, 'mb': 90.6} [15:46:42] DONE in 338s 

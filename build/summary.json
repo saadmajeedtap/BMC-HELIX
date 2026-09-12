@@ -1,23 +1,23 @@
 {
  "http": {
-  "requests": 322,
-  "cache_hits": 0,
+  "requests": 1650,
+  "cache_hits": 322,
   "errors": 0,
   "retries": 0,
-  "bytes": 41595053,
-  "seconds": 69.7,
-  "mb": 41.6
+  "bytes": 90595534,
+  "seconds": 338.3,
+  "mb": 90.6
  },
  "inventory": {
   "method": "rendered-navigation",
-  "pages": 448,
+  "pages": 496,
   "denied_filtered": 0,
   "expand_failures": 0,
   "roots": 1,
   "depth_histogram": {
    "1": 1,
    "3": 153,
-   "2": 37,
+   "2": 85,
    "4": 158,
    "5": 64,
    "6": 17,

@@ -1,19 +1,11 @@
-state: heartbeat
-at:  2026-09-12T15:46:08Z
-load: 15:46:08 up 9 min,  0 user,  load average: 0.30, 0.31, 0.20
-mem:  1180/15989 MB
+state: phase fetch rc=0
+at:  2026-09-12T15:46:42Z
+load: 15:46:42 up 10 min,  0 user,  load average: 0.31, 0.31, 0.20
+mem:  953/15989 MB
 disk: /dev/root 145G 59G 86G 41% /
 
 ## report
-89 MB
-## python deps
-weasyprint 70.0 | pypdf 6.18.1 | reportlab 5.0.1
-## selftest (offline logic + engine semantics)
-  ok   fallback links use the portal URL the assembler rewrites   uris=602
-  ok   fallback layout stays linear on a 600-row table   0.7s
-
-
-== render selftest (WeasyPrint) ==
+(WeasyPrint) ==
   ok   images localised to files on disk
 Annotation sizes differ: 2 vs. 0
 Annotation sizes differ: 2 vs. 0
@@ -60,6 +52,7 @@ integration: PASSED
 --- phase: inventory (started 15:39:52) ---
 phase inventory rc=0 ended 15:41:02  |  [15:41:02] inventory: {"method": "rendered-navigation", "pages": 448, "denied_filtered": 0, "expand_failures": 0, "roots": 1, "depth_histogram": {"1": 1, "3": 153, "2": 37, "4": 158, "5": 64, "6": 17, "7": 5, "8": 7, "9": 6}} [15:41:02] pages to build: 448 (order=448) [15:41:02] DONE in 70s 
 --- phase: fetch (started 15:41:03) ---
+phase fetch rc=0 ended 15:46:42  |  [15:46:42] attachments mirrored: 15/15 files [15:46:42] fetched: ok=496 redirect=0 http-fail=0 http={'requests': 1650, 'cache_hits': 322, 'errors': 0, 'retries': 0, 'bytes': 90595534, 'seconds': 338.3, 'mb': 90.6} [15:46:42] DONE in 338s 
 
 ## live build log (last 40 lines)
 === phase inventory ===
@@ -92,3 +85,9 @@ phase inventory rc=0 ended 15:41:02  |  [15:41:02] inventory: {"method": "render
 === phase fetch ===
 [15:41:04] pages to build: 448 (order=448)
 [15:41:04] fetching + cleaning 448 pages ...
+[fetch] cleaned 448/448 pages (http stats: {'requests': 1583, 'cache_hits': 322, 'errors': 0, 'retries': 0, 'bytes': 83500571, 'seconds': 323.3, 'mb': 83.5})
+[15:46:27] closure round 1: 48 page(s) reachable by link but not in the navigation tree -> added
+[fetch] cleaned 48/48 pages (http stats: {'requests': 1650, 'cache_hits': 322, 'errors': 0, 'retries': 0, 'bytes': 90595534, 'seconds': 338.3, 'mb': 90.6})
+[15:46:42] attachments mirrored: 15/15 files
+[15:46:42] fetched: ok=496 redirect=0 http-fail=0 http={'requests': 1650, 'cache_hits': 322, 'errors': 0, 'retries': 0, 'bytes': 90595534, 'seconds': 338.3, 'mb': 90.6}
+[15:46:42] DONE in 338s
