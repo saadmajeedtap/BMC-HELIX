@@ -1,9 +1,104 @@
-state: start
-at:  2026-09-12T15:39:24Z
-load: 15:39:24 up 3 min,  0 user,  load average: 0.21, 0.29, 0.13
-mem:  1009/15989 MB
-disk: /dev/root 145G 59G 87G 41% /
+state: tests done
+at:  2026-09-12T15:39:51Z
+load: 15:39:51 up 3 min,  0 user,  load average: 0.64, 0.38, 0.17
+mem:  1035/15989 MB
+disk: /dev/root 145G 59G 86G 41% /
 
 ## report
+## build log
+date: 2026-09-12T15:39:25Z  runner: x86_64  sections=ALL
+args: --space-path Service-Management/IT-Service-Management/BMC-Helix-ITSM/itsm263 --product BMC Helix ITSM --version 26.3 --workspace /tmp/helix-build --out /tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf --engine weasyprint --workers 4 --http-workers 10 --delay 0.06 --nav-batch 60 --image-max-width 1200 --image-quality 72
+## system deps
+fonts: 53  mem: 15989 MB
+## python deps
+weasyprint 70.0 | pypdf 6.18.1 | reportlab 5.0.1
+## selftest (offline logic + engine semantics)
+  ok   fallback links use the portal URL the assembler rewrites   uris=602
+  ok   fallback layout stays linear on a 600-row table   0.7s
+
+
+== render selftest (WeasyPrint) ==
+  ok   images localised to files on disk
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+Annotation sizes differ: 2 vs. 0
+  ok   every page rendered   6/6
+  ok   each page produced >=1 PDF page
+  ok   content hidden behind a tab is present in the PDF
+  ok   content hidden in a collapsed block is present
+  ok   table kept, site navigation stripped
+  ok   the page image is embedded in the PDF   xobjects=1
+  ok   no documentation link still opens the website   left=0
+  ok   in-document jumps exist   goto=28
+  ok   title + source marker found for every page   {}
+  ok   PDF bookmarks mirror the navigation tree   6/6
+
+SELFTEST PASSED - pipeline logic verified offline
+selftest: PASSED
+## integration test (mock portal, end to end)
+[15:39:50] inventory: {"method": "rendered-navigation", "pages": 9, "denied_filtered": 2, "expand_failures": 0, "roots": 1, "depth_histogram": {"1": 1, "2": 2, "3": 4, "4": 2}}
+[15:39:50] pages to build: 7 (order=7)
+[15:39:50] --max-docs: 4 inventoried page(s) recorded in capped.json and left out of this build on purpose
+[15:39:50] fetching + cleaning 3 pages ...
+[fetch] cleaned 3/3 pages (http stats: {'requests': 10, 'cache_hits': 3, 'errors': 0, 'retries': 0, 'bytes': 12753, 'seconds': 0.4, 'mb': 0.0})
+[15:39:51] attachments mirrored: 1/1 files
+[15:39:51] fetched: ok=3 redirect=0 http-fail=0 http={'requests': 10, 'cache_hits': 3, 'errors': 0, 'retries': 0, 'bytes': 12753, 'seconds': 0.4, 'mb': 0.0}
+[15:39:51] DONE in 0s
+  ok   --max-docs records the pages it left out   4 pages
+  ok   a scoped run never crawls the rest of the space   ['Getting-started']
+  ok   pages excluded by the cap are not reported as missing content   missing=0 capped=4
+  ok   the report states how many pages a test build left out on purpose   4
+  ok   …and scores coverage against what the run actually asked for   100.0
+  ok   report text written   824 chars
+
+== http politeness/cache ==
+    {"requests": 17, "cache_hits": 9, "errors": 0, "retries": 0, "bytes": 19080, "seconds": 2.3, "mb": 0.0}
+  ok   zero http errors on a clean run
+
+INTEGRATION PASSED - enumeration, closure, cleaning and link mapping verified
+integration: PASSED
 
 ## live build log (last 40 lines)
+  ok   coverage: nothing missing   {'pdf': 'Demo-1.0-complete.pdf', 'pdf_bytes': 981004, 'inventory_pages': 9, 'docs_in_pdf': 8, 'pdf_pages': 10, 'rendered_ok': 8, 'rendered_degraded': 0, 'redirect_pages': 1, 'fetch_failures': 0, 'filt
+  ok   coverage: 100%   100.0
+  ok   bookmarks cover every page   8/8
+
+== end-to-end assemble+verify (synthetic render) ==
+[assemble] stamped 8 content pages
+[assemble] pages=10 docs=8 internalized=10 external_left=8 out=/tmp/helix-integration/e2e.pdf t=0s
+  ok   e2e: every page present in merged PDF   10 pages
+  ok   e2e: portal links converted to in-document jumps   10
+  ok   e2e: no portal link left un-resolved   0
+  ok   e2e: external links preserved   8
+  ok   e2e: structure covers every page   8
+  ok   e2e: each page starts on its own PDF page
+
+== scoped + capped smoke build (test-build honesty) ==
+[15:39:50] enumerating the space: every page, following the portal's own rendered navigation and all in-space links (link closure) ...
+[nav] round 1: visited=1 pages=3 queued=1 t=0s
+[nav] round 2: visited=2 pages=7 queued=3 t=0s
+[nav] round 3: visited=5 pages=9 queued=2 t=0s
+[nav] round 4: visited=7 pages=9 queued=0 t=0s
+[15:39:50] inventory: {"method": "rendered-navigation", "pages": 9, "denied_filtered": 2, "expand_failures": 0, "roots": 1, "depth_histogram": {"1": 1, "2": 2, "3": 4, "4": 2}}
+[15:39:50] pages to build: 7 (order=7)
+[15:39:50] --max-docs: 4 inventoried page(s) recorded in capped.json and left out of this build on purpose
+[15:39:50] fetching + cleaning 3 pages ...
+[fetch] cleaned 3/3 pages (http stats: {'requests': 10, 'cache_hits': 3, 'errors': 0, 'retries': 0, 'bytes': 12753, 'seconds': 0.4, 'mb': 0.0})
+[15:39:51] attachments mirrored: 1/1 files
+[15:39:51] fetched: ok=3 redirect=0 http-fail=0 http={'requests': 10, 'cache_hits': 3, 'errors': 0, 'retries': 0, 'bytes': 12753, 'seconds': 0.4, 'mb': 0.0}
+[15:39:51] DONE in 0s
+  ok   --max-docs records the pages it left out   4 pages
+  ok   a scoped run never crawls the rest of the space   ['Getting-started']
+  ok   pages excluded by the cap are not reported as missing content   missing=0 capped=4
+  ok   the report states how many pages a test build left out on purpose   4
+  ok   …and scores coverage against what the run actually asked for   100.0
+  ok   report text written   824 chars
+
+== http politeness/cache ==
+    {"requests": 17, "cache_hits": 9, "errors": 0, "retries": 0, "bytes": 19080, "seconds": 2.3, "mb": 0.0}
+  ok   zero http errors on a clean run
+
+INTEGRATION PASSED - enumeration, closure, cleaning and link mapping verified
