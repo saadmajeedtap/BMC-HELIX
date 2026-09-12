@@ -1,7 +1,7 @@
 state: heartbeat
-at:  2026-09-12T15:52:52Z
-load: 15:52:52 up 16 min,  0 user,  load average: 1.34, 2.22, 1.28
-mem:  1564/15989 MB
+at:  2026-09-12T15:54:33Z
+load: 15:54:33 up 18 min,  0 user,  load average: 1.06, 1.87, 1.25
+mem:  1107/15989 MB
 disk: /dev/root 145G 59G 86G 41% /
 
 ## report
@@ -55,11 +55,6 @@ phase fetch rc=0 ended 15:46:42  |  [15:46:42] attachments mirrored: 15/15 files
 --- phase: render (started 15:46:43) ---
 
 ## live build log (last 40 lines)
-[nav] round 18: visited=318 pages=445 queued=1 t=65s
-[nav] round 19: visited=319 pages=446 queued=1 t=66s
-[nav] round 20: visited=320 pages=447 queued=1 t=68s
-[nav] round 21: visited=321 pages=448 queued=1 t=69s
-[nav] round 22: visited=322 pages=448 queued=0 t=70s
 [15:41:02] inventory: {"method": "rendered-navigation", "pages": 448, "denied_filtered": 0, "expand_failures": 0, "roots": 1, "depth_histogram": {"1": 1, "3": 153, "2": 37, "4": 158, "5": 64, "6": 17, "7": 5, "8": 7, "9": 6}}
 [15:41:02] pages to build: 448 (order=448)
 [15:41:02] DONE in 70s
@@ -95,3 +90,8 @@ phase fetch rc=0 ended 15:46:42  |  [15:46:42] attachments mirrored: 15/15 files
 [render] 425/496 pages (192s, 0.5s/page)
 [render] 450/496 pages (202s, 0.4s/page)
 [render] 475/496 pages (208s, 0.4s/page)
+[render] slow/failed ement.BMC-Helix-ITSM.itsm263.Setting-up-and-going-live.Making-BMC-Helix-ITSM-available-to-your-users.Rebranding-BMC-Helix-ITSM-on-the-Universal-Client: TimeoutError: page render exceeded 240s
+[render] ok=495 failed=1 pages=1890 t=405s
+[render] failures: ['Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Setting-up-and-going-live.Making-BMC-Helix-ITSM-available-to-your-users.Rebranding-BMC-Helix-ITSM-on-the-Universal-Client']
+[15:53:29] re-rendering 1 slow page(s) serially, 300s each (shared budget 600s) ...
+[render] engine=weasyprint to_render=1 cached=0
