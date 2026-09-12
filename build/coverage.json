@@ -1,0 +1,50 @@
+{
+ "summary": {
+  "pdf": "BMC-Helix-ITSM-26.3-complete.pdf",
+  "pdf_bytes": 148268898,
+  "inventory_pages": 496,
+  "docs_in_pdf": 496,
+  "pdf_pages": 1918,
+  "rendered_ok": 496,
+  "rendered_degraded": 1,
+  "redirect_pages": 0,
+  "fetch_failures": 0,
+  "filtered_authoring_artifacts": 0,
+  "missing_from_pdf": 0,
+  "thin_or_empty_pages": 0,
+  "not_built_by_request": 0,
+  "coverage_base": 496,
+  "coverage_percent": 100.0,
+  "links": {
+   "internal_goto": 3969,
+   "helix_other_space_uri": 1353,
+   "external_uri": 250
+  },
+  "expand_failures": 0,
+  "build_seconds": 52.0,
+  "engine": "weasyprint",
+  "http": {
+   "requests": 0,
+   "cache_hits": 0,
+   "errors": 0,
+   "retries": 0,
+   "bytes": 0,
+   "seconds": 52.0,
+   "mb": 0.0
+  },
+  "assets_mb": 52.1
+ },
+ "missing": [],
+ "failed": [],
+ "thin": [],
+ "denied": [],
+ "unresolved_links": [],
+ "unresolved_targets": [],
+ "degraded_pages": {
+  "Service-Management.IT-Service-Management.BMC-Helix-ITSM.itsm263.Setting-up-and-going-live.Making-BMC-Helix-ITSM-available-to-your-users.Rebranding-BMC-Helix-ITSM-on-the-Universal-Client": {
+   "mode": "css-flattened",
+   "profile": {},
+   "first_error": null
+  }
+ }
+}
