@@ -62,3 +62,4 @@ phase fetch rc=0 ended 15:46:42  |  [15:46:42] attachments mirrored: 15/15 files
 phase render rc=0 ended 15:58:53  |  [15:58:29] trying a CSS-flattened copy of 1 page(s) ... [15:58:53]   [flatten] ok: Rebranding-BMC-Helix-ITSM-on-the-Universal-Client -> 19 page(s) [15:58:53] DONE in 730s 
 --- phase: assemble (started 15:58:54) ---
 phase assemble rc=0 ended 15:59:07  |  [assemble] pages=1918 docs=496 internalized=3281 external_left=1603 out=/tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf t=12s [15:59:07] PDF written: /tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf (148.3 MB, 1918 pages) [15:59:07] DONE in 13s 
+--- phase: verify (started 15:59:08) ---

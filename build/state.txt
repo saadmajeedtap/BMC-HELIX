@@ -1,12 +1,11 @@
-state: phase assemble rc=0
-at:  2026-09-12T15:59:07Z
-load: 15:59:07 up 22 min,  0 user,  load average: 1.04, 1.35, 1.18
-mem:  1254/15989 MB
+state: heartbeat
+at:  2026-09-12T15:59:37Z
+load: 15:59:37 up 23 min,  0 user,  load average: 1.03, 1.32, 1.17
+mem:  1357/15989 MB
 disk: /dev/root 145G 59G 86G 41% /
 
 ## report
-the website   left=0
-  ok   in-document jumps exist   goto=28
+umps exist   goto=28
   ok   title + source marker found for every page   {}
   ok   PDF bookmarks mirror the navigation tree   6/6
 
@@ -43,10 +42,9 @@ phase fetch rc=0 ended 15:46:42  |  [15:46:42] attachments mirrored: 15/15 files
 phase render rc=0 ended 15:58:53  |  [15:58:29] trying a CSS-flattened copy of 1 page(s) ... [15:58:53]   [flatten] ok: Rebranding-BMC-Helix-ITSM-on-the-Universal-Client -> 19 page(s) [15:58:53] DONE in 730s 
 --- phase: assemble (started 15:58:54) ---
 phase assemble rc=0 ended 15:59:07  |  [assemble] pages=1918 docs=496 internalized=3281 external_left=1603 out=/tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf t=12s [15:59:07] PDF written: /tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf (148.3 MB, 1918 pages) [15:59:07] DONE in 13s 
+--- phase: verify (started 15:59:08) ---
 
 ## live build log (last 40 lines)
-Annotation sizes differ: 2 vs. 0
-Annotation sizes differ: 3 vs. 0
 Annotation sizes differ: 2 vs. 0
 Annotation sizes differ: 2 vs. 0
 Annotation sizes differ: 15 vs. 0
@@ -85,3 +83,5 @@ Annotation sizes differ: 2 vs. 0
 [assemble] pages=1918 docs=496 internalized=3281 external_left=1603 out=/tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf t=12s
 [15:59:07] PDF written: /tmp/helix-build/BMC-Helix-ITSM-26.3-complete.pdf (148.3 MB, 1918 pages)
 [15:59:07] DONE in 13s
+=== phase verify ===
+[15:59:09] pages to build: 496 (order=496)
