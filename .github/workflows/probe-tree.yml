@@ -1,0 +1,43 @@
+name: probe-tree
+# Find the authoritative page inventory for the space (count, depth, structure)
+# via the XWiki ExportDocumentTree endpoint the site's own export modal uses.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/probe-tree.yml
+      - scripts/probe_tree.py
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: deps
+        run: pip install -q requests beautifulsoup4 lxml
+      - name: probe
+        run: python3 scripts/probe_tree.py | tee /tmp/report.md
+      - name: comment
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          python3 - <<'PY'
+          import os,subprocess
+          body=open('/tmp/report.md').read()[:60000]
+          subprocess.run(["gh","api","--method","POST",
+            f"repos/{os.environ['GITHUB_REPOSITORY']}/issues/1/comments","-f",f"body={body}"],check=False)
+          PY
+      - name: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B docs-probe
+          mkdir -p probe && cp /tmp/report.md probe/tree-report.md
+          [ -f /tmp/w/inventory.json ] && cp /tmp/w/inventory.json probe/inventory.json
+          git add -f probe/ && git commit -m "probe: document tree inventory" && git push -f origin docs-probe

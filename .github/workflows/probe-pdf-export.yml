@@ -1,0 +1,42 @@
+name: probe-pdf-export
+# Determine whether BMC's own XWiki PDF export can produce the COMPLETE space
+# (all children, images, internal structure) and find the best enumeration API.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/probe-pdf-export.yml
+      - scripts/probe_pdf_export.sh
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: deps
+        run: pip install -q pypdf beautifulsoup4 lxml requests
+      - name: probe
+        run: bash scripts/probe_pdf_export.sh | tee /tmp/report.md
+      - name: comment
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          python3 - <<'PY'
+          import os,subprocess
+          body=open('/tmp/report.md').read()[:60000]
+          subprocess.run(["gh","api","--method","POST",
+            f"repos/{os.environ['GITHUB_REPOSITORY']}/issues/1/comments","-f",f"body={body}"],check=False)
+          PY
+      - name: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B docs-probe
+          mkdir -p probe && cp /tmp/report.md probe/pdf-export-report.md
+          git add -f probe/pdf-export-report.md && git commit -m "probe: pdf export report" && git push -f origin docs-probe

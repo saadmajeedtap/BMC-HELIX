@@ -1,0 +1,50 @@
+name: probe-endpoints
+# Recon only: find the exact space-tree endpoint the portal uses, verbatim, and
+# save the raw fragment so the pipeline can be written against real HTML.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/probe_endpoints.py
+      - scripts/probe_endpoints.sh
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q requests
+      - name: probe
+        run: |
+          mkdir -p /tmp/probe
+          PROBE_OUT=/tmp/probe python3 scripts/probe_endpoints.py > /tmp/out.md 2>&1
+        continue-on-error: true
+      - name: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B docs-probe
+          mkdir -p probe && cp /tmp/out.md probe/endpoints.md || true
+          cp /tmp/probe/tree-fragment.html probe/tree-fragment.html || true
+          cp /tmp/probe/tree-rdf.xml probe/tree-rdf.xml || true
+          git add -f probe
+          git commit -qm "probe: enumeration endpoint matrix + raw fragment" || true
+          git push -f origin HEAD:docs-probe || true
+      - name: comment
+        if: always()
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          python3 - <<'PY'
+          import os, subprocess
+          body = open('/tmp/out.md').read()[:60000]
+          subprocess.run(["gh","api","--method","POST",
+                          f"repos/{os.environ['GITHUB_REPOSITORY']}/issues/1/comments",
+                          "-f", f"body={body}"], check=False)
+          PY

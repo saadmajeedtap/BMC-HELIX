@@ -1,0 +1,9 @@
+# Pipeline used by scripts/build_docs_pdf.py and the CI workflow.
+requests>=2.31
+beautifulsoup4>=4.12
+lxml>=5
+weasyprint>=62
+pypdf>=4.2
+reportlab>=4.1
+pillow>=10
+pypdfium2>=4.30

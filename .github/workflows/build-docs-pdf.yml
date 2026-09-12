@@ -1,0 +1,66 @@
+name: build-docs-pdf
+# Build one complete, self-linked PDF of a BMC Helix documentation space.
+# Edit .build-config.json and push to reconfigure; reports + artifacts land on the
+# `docs-build` branch, and optionally a GitHub Release holds the full PDF.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .build-config.json
+
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: read config
+        run: |
+          python3 - <<'PY' >> "$GITHUB_ENV"
+          import json
+          ALIAS = {"no_attachments": "NO_ATTACH", "space_path": "SPACE_PATH",
+                   "only_sections": "ONLY_SECTIONS", "max_docs": "MAX_DOCS",
+                   "http_workers": "HTTP_WORKERS", "no_stamp": "NO_STAMP",
+                   "commit_pdf": "COMMIT_PDF", "publish_release": "PUBLISH_RELEASE",
+                   "nav_batch": "NAV_BATCH", "image_max_width": "IMAGE_MAX_WIDTH",
+                   "image_quality": "IMAGE_QUALITY", "no_image_optimize": "NO_IMAGE_OPT",
+                   "time_budget": "TIME_BUDGET",
+                   "phase_timeout": "PHASE_TIMEOUT"}
+          c = json.load(open(".build-config.json"))
+          print("WORKDIR=/tmp/helix-build")
+          for k, v in c.items():
+              if isinstance(v, bool):
+                  v = "1" if v else "0"
+              name = ALIAS.get(k, k.upper().replace("-", "_"))
+              if name and not name.startswith("NOTE"):
+                  print(f"{name}={v}")
+          PY
+          cat .build-config.json
+      - name: build
+        run: bash scripts/ci_build.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: comment
+        if: always()
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          python3 - <<'PY'
+          import os, subprocess
+          try:
+              body = open('/tmp/helix-build/report.md').read()[-55000:]
+          except Exception:
+              body = "build produced no report"
+          body = ("### build-docs-pdf run #" + os.environ.get("GITHUB_RUN_NUMBER", "?") +
+                  " (" + os.environ.get("SPACE_PATH", "") + ", sections=" +
+                  (os.environ.get("ONLY_SECTIONS") or "ALL") + ")\n\n" + body)
+          subprocess.run(["gh", "api", "--method", "POST",
+                          f"repos/{os.environ['GITHUB_REPOSITORY']}/issues/1/comments",
+                          "-f", f"body={body}"], check=False)
+          PY
