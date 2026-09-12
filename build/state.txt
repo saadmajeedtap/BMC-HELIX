@@ -1,12 +1,11 @@
-state: phase fetch rc=0
-at:  2026-09-12T15:46:42Z
-load: 15:46:42 up 10 min,  0 user,  load average: 0.31, 0.31, 0.20
-mem:  953/15989 MB
+state: heartbeat
+at:  2026-09-12T15:47:49Z
+load: 15:47:49 up 11 min,  0 user,  load average: 3.58, 1.26, 0.54
+mem:  1411/15989 MB
 disk: /dev/root 145G 59G 86G 41% /
 
 ## report
-(WeasyPrint) ==
-  ok   images localised to files on disk
+o files on disk
 Annotation sizes differ: 2 vs. 0
 Annotation sizes differ: 2 vs. 0
 Annotation sizes differ: 2 vs. 0
@@ -53,14 +52,9 @@ integration: PASSED
 phase inventory rc=0 ended 15:41:02  |  [15:41:02] inventory: {"method": "rendered-navigation", "pages": 448, "denied_filtered": 0, "expand_failures": 0, "roots": 1, "depth_histogram": {"1": 1, "3": 153, "2": 37, "4": 158, "5": 64, "6": 17, "7": 5, "8": 7, "9": 6}} [15:41:02] pages to build: 448 (order=448) [15:41:02] DONE in 70s 
 --- phase: fetch (started 15:41:03) ---
 phase fetch rc=0 ended 15:46:42  |  [15:46:42] attachments mirrored: 15/15 files [15:46:42] fetched: ok=496 redirect=0 http-fail=0 http={'requests': 1650, 'cache_hits': 322, 'errors': 0, 'retries': 0, 'bytes': 90595534, 'seconds': 338.3, 'mb': 90.6} [15:46:42] DONE in 338s 
+--- phase: render (started 15:46:43) ---
 
 ## live build log (last 40 lines)
-=== phase inventory ===
-[15:39:52] enumerating the space: every page, following the portal's own rendered navigation and all in-space links (link closure) ...
-[nav] round 1: visited=1 pages=17 queued=16 t=1s
-[nav] round 2: visited=17 pages=130 queued=113 t=5s
-[nav] round 3: visited=77 pages=241 queued=117 t=15s
-[nav] round 4: visited=137 pages=324 queued=84 t=26s
 [nav] round 5: visited=197 pages=365 queued=41 t=35s
 [nav] round 6: visited=238 pages=404 queued=39 t=42s
 [nav] round 7: visited=277 pages=423 queued=19 t=48s
@@ -91,3 +85,13 @@ phase fetch rc=0 ended 15:46:42  |  [15:46:42] attachments mirrored: 15/15 files
 [15:46:42] attachments mirrored: 15/15 files
 [15:46:42] fetched: ok=496 redirect=0 http-fail=0 http={'requests': 1650, 'cache_hits': 322, 'errors': 0, 'retries': 0, 'bytes': 90595534, 'seconds': 338.3, 'mb': 90.6}
 [15:46:42] DONE in 338s
+=== phase render ===
+[15:46:43] pages to build: 496 (order=496)
+[15:46:43] rendering pages with weasyprint ...
+[render] engine=weasyprint to_render=496 cached=0
+[render] 25/496 pages (9s, 0.4s/page)
+[render] 50/496 pages (24s, 0.5s/page)
+[render] 75/496 pages (35s, 0.5s/page)
+[render] 100/496 pages (41s, 0.4s/page)
+[render] 125/496 pages (47s, 0.4s/page)
+[render] 150/496 pages (54s, 0.4s/page)
